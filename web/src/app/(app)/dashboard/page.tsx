@@ -14,6 +14,58 @@ export default function DashboardPage() {
         actionLabel="Nuevo tramite"
       />
 
+      <section className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+        <div className="rounded-[28px] border border-[var(--color-line)] bg-[linear-gradient(135deg,#163742_0%,#214e5c_52%,#285d6c_100%)] px-6 py-6 text-white sm:px-7">
+          <p className="text-xs uppercase tracking-[0.22em] text-white/55">Lectura rapida</p>
+          <div className="mt-4 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+            <div>
+              <h2 className="text-3xl font-semibold tracking-tight">
+                La manana arranca con 2 tramites observados y 4 carpetas para mover.
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-white/74">
+                Lo prioritario hoy es cerrar documentacion de la Ranger, revisar la
+                observacion del patentamiento y cobrar dos tramites ya terminados.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              {[
+                ["Registro", "Santa Rosa 2"],
+                ["Caja gestoría", "$ 814.000"],
+                ["Cobros hoy", "3 por confirmar"],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-2xl border border-white/10 bg-white/8 px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-white/50">{label}</p>
+                  <p className="mt-2 text-lg font-semibold tracking-tight">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <SectionCard
+          title="Atajos de trabajo"
+          description="Lo mas comun sin salir del dashboard."
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              "Nuevo ingreso",
+              "Cargar egreso",
+              "Agregar cliente",
+              "Abrir guia",
+              "Actualizar tramite",
+              "Crear tarea",
+            ].map((action) => (
+              <button
+                key={action}
+                className="rounded-2xl border border-[var(--color-line)] px-4 py-4 text-left text-sm font-semibold text-[var(--color-ink)] transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
+              >
+                {action}
+              </button>
+            ))}
+          </div>
+        </SectionCard>
+      </section>
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {summaries.map((summary) => (
           <SummaryCard key={summary.title} {...summary} />
@@ -38,7 +90,7 @@ export default function DashboardPage() {
                       {procedure.type}
                     </p>
                     <p className="mt-1 text-sm text-[var(--color-muted)]">
-                      {procedure.client} · {procedure.vehicle}
+                      {procedure.client} - {procedure.vehicle}
                     </p>
                   </div>
                   <StatusBadge tone={procedure.statusTone}>{procedure.status}</StatusBadge>
@@ -67,7 +119,7 @@ export default function DashboardPage() {
                   <StatusBadge tone={task.tone}>{task.priority}</StatusBadge>
                 </div>
                 <p className="mt-2 text-sm text-[var(--color-muted)]">
-                  {task.related} · {task.dueLabel}
+                  {task.related} - {task.dueLabel}
                 </p>
               </div>
             ))}
@@ -88,7 +140,7 @@ export default function DashboardPage() {
                     {movement.description}
                   </p>
                   <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">
-                    {movement.category} · {movement.area}
+                    {movement.category} - {movement.area}
                   </p>
                 </div>
                 <p

@@ -23,9 +23,53 @@ export default async function ProcedureDetailPage({
       <PageHeader
         eyebrow="Ficha de tramite"
         title={detail.title}
-        description={`${detail.client} · ${detail.vehicle} · ${detail.registry}`}
+        description={`${detail.client} - ${detail.vehicle} - ${detail.registry}`}
         actionLabel="Actualizar estado"
       />
+
+      <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[28px] border border-[var(--color-line)] bg-[linear-gradient(135deg,#f4eee4_0%,#fbf8f2_100%)] px-6 py-5">
+          <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-muted)]">
+            Estado del expediente
+          </p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+            La carpeta esta avanzada, pero no deberia presentarse hasta cerrar la
+            firma certificada y terminar la validacion previa.
+          </h2>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {["Cliente confirmado", "Verificacion hecha", "Falta firma", "Caja parcial cobrada"].map(
+              (pill) => (
+                <span
+                  key={pill}
+                  className="rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]"
+                >
+                  {pill}
+                </span>
+              ),
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+          {[
+            ["Proximo paso", "Coordinar firma"],
+            ["Responsable", "Marcelo"],
+            ["Riesgo", "Observacion por incompleto"],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5"
+            >
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                {label}
+              </p>
+              <p className="mt-3 text-lg font-semibold tracking-tight text-[var(--color-ink)]">
+                {value}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-4">
         {detail.summary.map((item) => (
@@ -112,6 +156,24 @@ export default async function ProcedureDetailPage({
         </div>
 
         <div className="space-y-6">
+          <SectionCard title="Acciones sugeridas" description="Acciones rapidas sobre este tramite.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                "Marcar requisito recibido",
+                "Cargar gasto",
+                "Agregar nota",
+                "Abrir guia",
+              ].map((action) => (
+                <button
+                  key={action}
+                  className="rounded-2xl border border-[var(--color-line)] px-4 py-4 text-left text-sm font-semibold text-[var(--color-ink)] transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
+                >
+                  {action}
+                </button>
+              ))}
+            </div>
+          </SectionCard>
+
           <SectionCard title="Ayuda contextual" description="Guia rapida para este tramite.">
             <div className="space-y-4">
               <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">

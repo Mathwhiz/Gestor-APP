@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard" },
@@ -12,6 +15,8 @@ const navigation = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#efe7da_0%,#f6f3ec_35%,#f3efe6_100%)]">
       <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col px-4 py-4 lg:flex-row lg:gap-4 lg:px-5">
@@ -29,9 +34,20 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center rounded-2xl px-4 py-3 text-sm text-white/76 transition hover:bg-white/10 hover:text-white"
+                className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm transition ${
+                  pathname === item.href || pathname.startsWith(`${item.href}/`)
+                    ? "bg-white text-[#17343f] shadow-[0_12px_30px_rgba(255,255,255,0.12)]"
+                    : "text-white/76 hover:bg-white/10 hover:text-white"
+                }`}
               >
-                {item.label}
+                <span>{item.label}</span>
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    pathname === item.href || pathname.startsWith(`${item.href}/`)
+                      ? "bg-[var(--color-accent)]"
+                      : "bg-white/18"
+                  }`}
+                />
               </Link>
             ))}
           </nav>
@@ -55,13 +71,23 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <div className="flex-1 rounded-[32px] border border-[var(--color-line)] bg-white/86 backdrop-blur">
           <header className="flex flex-col gap-4 border-b border-[var(--color-line)] px-5 py-5 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
-            <div>
+            <div className="space-y-3">
               <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-muted)]">
                 Prototipo navegable
               </p>
               <p className="mt-2 text-sm text-[var(--color-muted)]">
                 Estructura lista para conectar PostgreSQL o Firestore despues.
               </p>
+              <div className="flex flex-wrap gap-2">
+                {["Base: La Pampa", "Modo: prototipo", "Datos: mockeados"].map((pill) => (
+                  <span
+                    key={pill}
+                    className="rounded-full bg-[var(--color-panel-soft)] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]"
+                  >
+                    {pill}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-3">
