@@ -148,11 +148,25 @@ export function ProceduresWorkspace() {
 
         {showForm ? (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-            <input value={draft.type} onChange={(event) => setDraft((c) => ({ ...c, type: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Tipo" />
+            <select value={draft.type} onChange={(event) => setDraft((c) => ({ ...c, type: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+              <option>Transferencia</option>
+              <option>Duplicado de cedula</option>
+              <option>Denuncia de venta</option>
+              <option>Patentamiento</option>
+            </select>
             <input value={draft.client} onChange={(event) => setDraft((c) => ({ ...c, client: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Cliente" />
             <input value={draft.vehicle} onChange={(event) => setDraft((c) => ({ ...c, vehicle: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Vehiculo / dominio" />
-            <input value={draft.jurisdiction} onChange={(event) => setDraft((c) => ({ ...c, jurisdiction: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Jurisdiccion" />
-            <input value={draft.priority} onChange={(event) => setDraft((c) => ({ ...c, priority: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Prioridad" />
+            <select value={draft.jurisdiction} onChange={(event) => setDraft((c) => ({ ...c, jurisdiction: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+              <option>La Pampa</option>
+              <option>Nacional</option>
+              <option>Buenos Aires</option>
+              <option>CABA</option>
+            </select>
+            <select value={draft.priority} onChange={(event) => setDraft((c) => ({ ...c, priority: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+              <option>Urgente</option>
+              <option>Alta</option>
+              <option>Media</option>
+            </select>
             <button onClick={addProcedure} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)]">
               Agregar
             </button>

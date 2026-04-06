@@ -110,10 +110,22 @@ export function ContactsWorkspace() {
         <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de contacto</p>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <input value={draft.name} onChange={(event) => setDraft((c) => ({ ...c, name: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Nombre" />
-          <input value={draft.role} onChange={(event) => setDraft((c) => ({ ...c, role: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Rol" />
+          <select value={draft.role} onChange={(event) => setDraft((c) => ({ ...c, role: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+            <option>Cliente particular</option>
+            <option>Clienta recurrente</option>
+            <option>Tercero derivador</option>
+            <option>Registro</option>
+            <option>Proveedor</option>
+          </select>
           <input value={draft.document} onChange={(event) => setDraft((c) => ({ ...c, document: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="DNI / CUIT" />
           <input value={draft.phone} onChange={(event) => setDraft((c) => ({ ...c, phone: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Telefono" />
-          <button onClick={addContact} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)]">
+          <select value={draft.location} onChange={(event) => setDraft((c) => ({ ...c, location: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+            <option>Santa Rosa, La Pampa</option>
+            <option>Toay, La Pampa</option>
+            <option>General Pico, La Pampa</option>
+            <option>CABA</option>
+          </select>
+          <button onClick={addContact} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] md:col-span-2 xl:col-span-1">
             Agregar
           </button>
         </div>

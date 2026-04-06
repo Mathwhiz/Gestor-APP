@@ -122,8 +122,19 @@ export function FinanceWorkspace() {
         <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Carga rapida de movimiento</p>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <input value={draft.description} onChange={(event) => setDraft((c) => ({ ...c, description: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Descripcion" />
-          <input value={draft.category} onChange={(event) => setDraft((c) => ({ ...c, category: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Categoria" />
-          <input value={draft.area} onChange={(event) => setDraft((c) => ({ ...c, area: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Area" />
+          <select value={draft.category} onChange={(event) => setDraft((c) => ({ ...c, category: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+            <option>Otros ingresos</option>
+            <option>Honorarios de tramites</option>
+            <option>Aranceles</option>
+            <option>Comisiones pagadas</option>
+            <option>Alquiler</option>
+          </select>
+          <select value={draft.area} onChange={(event) => setDraft((c) => ({ ...c, area: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+            <option>Gestoria</option>
+            <option>Agencia</option>
+            <option>General</option>
+            <option>Personal</option>
+          </select>
           <input value={draft.amount} onChange={(event) => setDraft((c) => ({ ...c, amount: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="+ $ 0" />
           <button onClick={addMovement} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)]">
             Agregar
