@@ -2,9 +2,11 @@ import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatusBadge } from "@/components/status-badge";
 import { SummaryCard } from "@/components/summary-card";
-import { tasks, procedures, summaries, movements, guides } from "@/data/mock-data";
+import { getDashboardData } from "@/lib/data";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const { tasks, procedures, summaries, movements, guides } = await getDashboardData();
+
   return (
     <div className="space-y-8">
       <PageHeader

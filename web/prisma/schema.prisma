@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ContactRole {
+  CLIENTE_PARTICULAR
+  CLIENTE_RECURRENTE
+  TERCERO_DERIVADOR
+  REGISTRO
+  PROVEEDOR
+}
+
+enum ContactStatus {
+  ACTIVO
+  INACTIVO
+}
+
+enum ProcedureStatus {
+  BORRADOR
+  PENDIENTE_DOCUMENTACION
+  LISTO_PARA_PRESENTAR
+  PRESENTADO
+  OBSERVADO
+  TERMINADO
+}
+
+enum ProcedurePriority {
+  URGENTE
+  ALTA
+  MEDIA
+}
+
+enum MovementArea {
+  GESTORIA
+  AGENCIA
+  GENERAL
+  PERSONAL
+}
+
+enum MovementType {
+  INGRESO
+  EGRESO
+}
+
+enum TaskPriority {
+  URGENTE
+  ALTA
+  MEDIA
+}
+
+model Contact {
+  id        String        @id @default(cuid())
+  name      String
+  role      ContactRole
+  document  String?
+  phone     String?
+  location  String?
+  status    ContactStatus @default(ACTIVO)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  procedures Procedure[]
+}
+
+model Procedure {
+  id           String             @id @default(cuid())
+  slug         String             @unique
+  type         String
+  clientName   String
+  vehicleLabel String
+  status       ProcedureStatus
+  priority     ProcedurePriority
+  jurisdiction String
+  targetDate   String
+  registryName String?
+  guideTitle   String?
+  guideSummary String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  contactId String?
+  contact   Contact?              @relation(fields: [contactId], references: [id])
+
+  requirements ProcedureRequirement[]
+  timeline     ProcedureTimeline[]
+  movements    ProcedureMovement[]
+  notes        ProcedureNote[]
+}
+
+model ProcedureRequirement {
+  id          String    @id @default(cuid())
+  label       String
+  note        String?
+  done        Boolean   @default(false)
+  procedureId String
+  procedure   Procedure @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+}
+
+model ProcedureTimeline {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  dateLabel   String
+  procedureId String
+  procedure   Procedure @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+}
+
+model ProcedureMovement {
+  id          String       @id @default(cuid())
+  label       String
+  meta        String
+  amount      String
+  type        MovementType
+  area        MovementArea
+  procedureId String
+  procedure   Procedure    @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+}
+
+model ProcedureNote {
+  id          String    @id @default(cuid())
+  body        String
+  createdAt   DateTime  @default(now())
+  procedureId String
+  procedure   Procedure @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+}
+
+model FinancialMovement {
+  id          String       @id @default(cuid())
+  dateLabel   String
+  description String
+  category    String
+  area        MovementArea
+  account     String
+  amount      String
+  type        MovementType
+  createdAt   DateTime     @default(now())
+}
+
+model Task {
+  id        String       @id @default(cuid())
+  title     String
+  related   String
+  dueLabel  String
+  priority  TaskPriority
+  assignee  String
+  done      Boolean      @default(false)
+  createdAt DateTime     @default(now())
+}
+
+model Guide {
+  id           String   @id @default(cuid())
+  title        String
+  summary      String
+  scope        String
+  jurisdiction String
+  lastUpdate   String
+  highlights   String[]
+  createdAt    DateTime @default(now())
+}

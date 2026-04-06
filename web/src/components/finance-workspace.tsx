@@ -2,16 +2,20 @@
 
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
-import { movements as seedMovements } from "@/data/mock-data";
+import { movements as mockMovements } from "@/data/mock-data";
 
-type MovementItem = (typeof seedMovements)[number];
+type MovementItem = (typeof mockMovements)[number];
 
 const filters = ["Todos", "Ingresos", "Egresos", "Gestoria", "Agencia", "General", "Personal"] as const;
 
-export function FinanceWorkspace() {
+export function FinanceWorkspace({
+  initialItems = mockMovements,
+}: {
+  initialItems?: MovementItem[];
+}) {
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Todos");
   const [search, setSearch] = useState("");
-  const [items, setItems] = useState<MovementItem[]>(seedMovements);
+  const [items, setItems] = useState<MovementItem[]>(initialItems);
   const [draft, setDraft] = useState({
     description: "",
     category: "Otros ingresos",

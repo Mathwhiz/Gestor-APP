@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
-import { procedures as seedProcedures } from "@/data/mock-data";
+import { procedures as mockProcedures } from "@/data/mock-data";
 
 type ProcedureItem = {
   id: string;
@@ -19,11 +19,15 @@ type ProcedureItem = {
 
 const filters = ["Todos", "Pendiente de documentacion", "Observado", "Urgente", "La Pampa"] as const;
 
-export function ProceduresWorkspace() {
+export function ProceduresWorkspace({
+  initialItems = mockProcedures,
+}: {
+  initialItems?: ProcedureItem[];
+}) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Todos");
   const [showForm, setShowForm] = useState(false);
-  const [items, setItems] = useState<ProcedureItem[]>(seedProcedures);
+  const [items, setItems] = useState<ProcedureItem[]>(initialItems);
   const [draft, setDraft] = useState({
     type: "Transferencia",
     client: "",

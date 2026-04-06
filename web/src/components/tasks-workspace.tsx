@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
-import { tasks as seedTasks } from "@/data/mock-data";
+import { tasks as mockTasks } from "@/data/mock-data";
 
 type TaskItem = {
   id: string;
@@ -18,8 +18,12 @@ type TaskItem = {
 
 const filters = ["Todas", "Urgente", "Alta", "Media", "Completadas"] as const;
 
-export function TasksWorkspace() {
-  const [items, setItems] = useState<TaskItem[]>(seedTasks);
+export function TasksWorkspace({
+  initialItems = mockTasks,
+}: {
+  initialItems?: TaskItem[];
+}) {
+  const [items, setItems] = useState<TaskItem[]>(initialItems);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Todas");
   const [draft, setDraft] = useState({

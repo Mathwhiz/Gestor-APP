@@ -2,14 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
-import { contacts as seedContacts } from "@/data/mock-data";
+import { contacts as mockContacts } from "@/data/mock-data";
 
-type ContactItem = (typeof seedContacts)[number];
+type ContactItem = (typeof mockContacts)[number];
 
 const roleFilters = ["Todos", "Cliente particular", "Clienta recurrente", "Tercero derivador", "Registro", "Proveedor"] as const;
 
-export function ContactsWorkspace() {
-  const [items, setItems] = useState<ContactItem[]>(seedContacts);
+export function ContactsWorkspace({
+  initialItems = mockContacts,
+}: {
+  initialItems?: ContactItem[];
+}) {
+  const [items, setItems] = useState<ContactItem[]>(initialItems);
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<(typeof roleFilters)[number]>("Todos");
   const [draft, setDraft] = useState({
