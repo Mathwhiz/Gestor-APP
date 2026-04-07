@@ -6,6 +6,7 @@ const messageMap: Record<string, string> = {
   code: "Falto el codigo de autenticacion al volver desde Google.",
   config: "Falta configurar NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY.",
   oauth: "No se pudo iniciar el acceso con Google desde Supabase.",
+  profile: "Se abrio la sesion pero fallo la sincronizacion del perfil interno.",
   session: "No se pudo abrir la sesion al volver desde Google.",
   unauthorized: "Ese Gmail no esta habilitado para entrar a la app.",
 };

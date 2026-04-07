@@ -11,17 +11,32 @@ export async function GET(request: NextRequest) {
   }
 
   const code = request.nextUrl.searchParams.get("code");
-  const next = request.nextUrl.searchParams.get("next") ?? "/dashboard";
-  const response = NextResponse.redirect(new URL(next, request.url));
+  let next = request.nextUrl.searchParams.get("next") ?? "/dashboard";
+
+  if (!next.startsWith("/")) {
+    next = "/dashboard";
+  }
+
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const isLocalEnv = process.env.NODE_ENV === "development";
+  const redirectUrl = isLocalEnv
+    ? new URL(next, request.url)
+    : forwardedHost
+      ? new URL(`https://${forwardedHost}${next}`)
+      : new URL(next, request.url);
+  const response = NextResponse.redirect(redirectUrl);
 
   const supabase = createServerClient(url, anonKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headers) {
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
+        });
+        Object.entries(headers ?? {}).forEach(([key, value]) => {
+          response.headers.set(key, value);
         });
       },
     },
@@ -42,6 +57,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login?message=unauthorized", request.url));
   }
 
-  await syncUserProfile(data.user);
+  try {
+    await syncUserProfile(data.user);
+  } catch {
+    return NextResponse.redirect(new URL("/login?message=profile", request.url));
+  }
+
   return response;
 }
