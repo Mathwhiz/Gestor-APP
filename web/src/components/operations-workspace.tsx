@@ -296,7 +296,7 @@ export function OperationsWorkspace({
             <option>Reserva</option>
             <option>Permuta</option>
           </select>
-          <select value={draft.vehicle} onChange={(event) => setDraft((current) => ({ ...current, vehicle: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
+          <select value={draft.vehicle} onChange={(event) => setDraft((current) => ({ ...current, vehicle: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)] xl:col-span-2" disabled={!canEdit || isPending}>
             <option value="">Seleccionar vehiculo</option>
             {vehicleOptions.map((vehicle) => (
               <option key={vehicle.id} value={vehicle.label}>
@@ -332,7 +332,7 @@ export function OperationsWorkspace({
         </div>
         <textarea value={draft.note} onChange={(event) => setDraft((current) => ({ ...current, note: event.target.value }))} className="mt-3 min-h-24 w-full rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Nota operativa" disabled={!canEdit || isPending} />
         {showForm ? (
-          <div className="mt-3 flex gap-3">
+          <div className="mt-3 flex flex-wrap gap-3">
             <button onClick={resetDraft} disabled={!canEdit || isPending} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
               Limpiar
             </button>
@@ -432,7 +432,7 @@ export function OperationsWorkspace({
                     <p>Margen: {operation.margin}</p>
                   </div>
                   <p className="mt-4 rounded-2xl bg-[var(--color-panel-soft)] px-4 py-3 text-sm text-[var(--color-ink)]">{operation.note}</p>
-                  <div className="mt-5 flex gap-3">
+                  <div className="mt-5 flex flex-wrap gap-3">
                     <Link href={`/operaciones/${operation.id}`} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
                       Abrir ficha
                     </Link>

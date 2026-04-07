@@ -9,6 +9,53 @@ import { confirmDiscardChanges, useUnsavedChanges } from "@/hooks/use-unsaved-ch
 type MovementItem = (typeof mockMovements)[number];
 
 const filters = ["Todos", "Ingresos", "Egresos", "Gestoria", "Agencia", "General", "Personal"] as const;
+const categoryOptions = [
+  "Otros ingresos",
+  "Honorarios de tramites",
+  "Comisiones cobradas",
+  "Aranceles",
+  "Combustible",
+  "Comisiones pagadas",
+  "Alquiler",
+  "Servicios",
+  "Retiro personal",
+] as const;
+const accountOptions = ["Caja gestoria", "Caja agencia", "Caja general", "Banco", "Billetera"] as const;
+const quickMovementPresets = [
+  {
+    label: "Cobro de honorarios",
+    description: "Ingreso de gestion ya cobrado",
+    draft: {
+      description: "Cobro de honorarios",
+      category: "Honorarios de tramites",
+      area: "Gestoria",
+      account: "Caja gestoria",
+      amount: "+ $ 0",
+    },
+  },
+  {
+    label: "Pago de formularios",
+    description: "Egreso operativo frecuente",
+    draft: {
+      description: "Pago de formularios",
+      category: "Aranceles",
+      area: "Gestoria",
+      account: "Caja gestoria",
+      amount: "- $ 0",
+    },
+  },
+  {
+    label: "Gasto general",
+    description: "Servicio, alquiler o gasto comun",
+    draft: {
+      description: "",
+      category: "Servicios",
+      area: "General",
+      account: "Banco",
+      amount: "- $ 0",
+    },
+  },
+] as const;
 
 export function FinanceWorkspace({
   initialItems = mockMovements,
@@ -20,6 +67,7 @@ export function FinanceWorkspace({
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Todos");
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<MovementItem[]>(initialItems);
+  const [showComposer, setShowComposer] = useState(false);
   const [draft, setDraft] = useState({
     description: "",
     category: "Otros ingresos",
@@ -68,12 +116,37 @@ export function FinanceWorkspace({
     editingId !== null &&
     JSON.stringify(editingDraft) !== editingInitial;
 
-  useUnsavedChanges(hasDraftChanges || hasEditChanges);
+  useUnsavedChanges((showComposer && hasDraftChanges) || hasEditChanges);
 
   const balance = filtered.reduce((total: number, item: (typeof filtered)[number]) => {
     const numeric = Number(item.amount.replace(/[^\d-]/g, ""));
     return item.amount.startsWith("+") ? total + numeric : total - Math.abs(numeric);
   }, 0);
+  const incomeTotal = filtered
+    .filter((item) => item.amount.startsWith("+"))
+    .reduce((total, item) => total + Number(item.amount.replace(/[^\d-]/g, "")), 0);
+  const expenseTotal = filtered
+    .filter((item) => item.amount.startsWith("-"))
+    .reduce((total, item) => total + Math.abs(Number(item.amount.replace(/[^\d-]/g, ""))), 0);
+  const areaBalances = ["Gestoria", "Agencia", "General", "Personal"].map((area) => {
+    const areaBalance = items
+      .filter((item) => item.area === area)
+      .reduce((total, item) => {
+        const numeric = Number(item.amount.replace(/[^\d-]/g, ""));
+        return item.amount.startsWith("+") ? total + numeric : total - Math.abs(numeric);
+      }, 0);
+
+    return { area, balance: areaBalance };
+  });
+
+  function applyPreset(
+    preset: (typeof quickMovementPresets)[number]["draft"],
+  ) {
+    setDraft({ ...preset });
+    setShowComposer(true);
+    setError("");
+    setSuccess("");
+  }
 
   function addMovement() {
     if (!canEdit || !draft.description.trim()) return;
@@ -95,6 +168,7 @@ export function FinanceWorkspace({
         account: "Caja gestoria",
         amount: "+ $ 0",
       });
+      setShowComposer(false);
       setSuccess("Movimiento cargado.");
     });
   }
@@ -154,6 +228,66 @@ export function FinanceWorkspace({
         actionDisabled={!canEdit}
       />
 
+      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="rounded-[28px] border border-[var(--color-line)] bg-[linear-gradient(135deg,#f4eee4_0%,#fbf8f2_100%)] px-5 py-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
+            Lectura financiera
+          </p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+            Caja operativa para decidir rapido, no solo para listar movimientos.
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-muted)]">
+            Separa gestoria, agencia, general y personal para ver si el negocio genera caja o si
+            estas mezclando movimientos que despues cuestan reconstruir.
+          </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Ingresos</p>
+              <p className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-success)]">
+                + ${incomeTotal.toLocaleString("es-AR")}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Egresos</p>
+              <p className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-danger)]">
+                - ${expenseTotal.toLocaleString("es-AR")}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Balance</p>
+              <p className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+                {balance >= 0 ? "+" : "-"} ${Math.abs(balance).toLocaleString("es-AR")}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Filtro</p>
+              <p className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+                {activeFilter}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          {quickMovementPresets.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => applyPreset(preset.draft)}
+              disabled={!canEdit || isPending}
+              className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5 text-left transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">
+                {preset.label}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+                {preset.description}
+              </p>
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className="grid gap-4 rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-4">
           <input
@@ -201,35 +335,89 @@ export function FinanceWorkspace({
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Carga rapida de movimiento</p>
-            {hasDraftChanges ? <p className="mt-1 text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en el alta.</p> : null}
+            {showComposer && hasDraftChanges ? <p className="mt-1 text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en el alta.</p> : null}
           </div>
-          {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
+          <div className="flex items-center gap-3">
+            {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
+            <button
+              type="button"
+              onClick={() => {
+                if (showComposer && !confirmDiscardChanges(hasDraftChanges)) return;
+                setShowComposer((current) => !current);
+              }}
+              disabled={!canEdit}
+              className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {showComposer ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <input value={draft.description} onChange={(event) => setDraft((c) => ({ ...c, description: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Descripcion" disabled={!canEdit || isPending} />
-          <select value={draft.category} onChange={(event) => setDraft((c) => ({ ...c, category: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
-            <option>Otros ingresos</option>
-            <option>Honorarios de tramites</option>
-            <option>Aranceles</option>
-            <option>Comisiones pagadas</option>
-            <option>Alquiler</option>
-          </select>
-          <select value={draft.area} onChange={(event) => setDraft((c) => ({ ...c, area: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
-            <option>Gestoria</option>
-            <option>Agencia</option>
-            <option>General</option>
-            <option>Personal</option>
-          </select>
-          <input value={draft.amount} onChange={(event) => setDraft((c) => ({ ...c, amount: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="+ $ 0" disabled={!canEdit || isPending} />
-          <button onClick={addMovement} disabled={!canEdit || isPending || !draft.description.trim()} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
-            {isPending ? "Guardando..." : "Agregar"}
-          </button>
-          <button onClick={resetDraft} disabled={!canEdit || isPending} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
-            Limpiar
-          </button>
-        </div>
+        {showComposer ? (
+          <>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {[
+                { label: "Ingreso", amount: "+ $ 0" },
+                { label: "Egreso", amount: "- $ 0" },
+              ].map((mode) => (
+                <button
+                  key={mode.label}
+                  type="button"
+                  onClick={() => setDraft((current) => ({ ...current, amount: mode.amount }))}
+                  disabled={!canEdit || isPending}
+                  className={`rounded-full border px-4 py-2 text-sm transition ${
+                    draft.amount.startsWith(mode.amount[0])
+                      ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
+                      : "border-[var(--color-line)] text-[var(--color-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <input value={draft.description} onChange={(event) => setDraft((c) => ({ ...c, description: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)] xl:col-span-2" placeholder="Descripcion" disabled={!canEdit || isPending} />
+              <select value={draft.category} onChange={(event) => setDraft((c) => ({ ...c, category: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
+                {categoryOptions.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+              <select value={draft.area} onChange={(event) => setDraft((c) => ({ ...c, area: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
+                <option>Gestoria</option>
+                <option>Agencia</option>
+                <option>General</option>
+                <option>Personal</option>
+              </select>
+              <input value={draft.amount} onChange={(event) => setDraft((c) => ({ ...c, amount: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="+ $ 0" disabled={!canEdit || isPending} />
+              <select value={draft.account} onChange={(event) => setDraft((c) => ({ ...c, account: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
+                {accountOptions.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+              <button onClick={addMovement} disabled={!canEdit || isPending || !draft.description.trim()} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
+                {isPending ? "Guardando..." : "Agregar"}
+              </button>
+              <button onClick={resetDraft} disabled={!canEdit || isPending} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
+                Limpiar
+              </button>
+            </div>
+          </>
+        ) : null}
         {error ? <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p> : null}
         {success ? <p className="mt-3 text-sm text-[var(--color-success)]">{success}</p> : null}
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {areaBalances.map((item) => (
+          <div
+            key={item.area}
+            className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5"
+          >
+            <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">{item.area}</p>
+            <p className="mt-3 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+              {item.balance >= 0 ? "+" : "-"} ${Math.abs(item.balance).toLocaleString("es-AR")}
+            </p>
+          </div>
+        ))}
       </section>
 
       <section className="rounded-[28px] border border-[var(--color-line)] bg-white">

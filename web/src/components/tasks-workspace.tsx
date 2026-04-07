@@ -36,6 +36,7 @@ export function TasksWorkspace({
   const [items, setItems] = useState<TaskItem[]>(initialItems);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Todas");
+  const [showComposer, setShowComposer] = useState(false);
   const [draft, setDraft] = useState({
     title: "",
     related: "Tramite general",
@@ -85,7 +86,7 @@ export function TasksWorkspace({
     editingId !== null &&
     JSON.stringify(editingDraft) !== editingInitial;
 
-  useUnsavedChanges(hasDraftChanges || hasEditChanges);
+  useUnsavedChanges((showComposer && hasDraftChanges) || hasEditChanges);
 
   function toneFromPriority(priority: string, done?: boolean) {
     if (done) return "success" as const;
@@ -137,6 +138,7 @@ export function TasksWorkspace({
         priority: "Media",
         assignee: "Marcelo",
       });
+      setShowComposer(false);
       setSuccess("Tarea creada.");
     });
   }
@@ -276,26 +278,42 @@ export function TasksWorkspace({
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de tarea</p>
-            {hasDraftChanges ? <p className="mt-1 text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en el alta.</p> : null}
+            {showComposer ? <p className="mt-1 text-sm text-[var(--color-warning,#b57628)]">{hasDraftChanges ? "Tenes cambios sin guardar en el alta." : "Abri el alta solo cuando necesites cargar una tarea nueva."}</p> : null}
           </div>
-          {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
+          <div className="flex items-center gap-3">
+            {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
+            <button
+              type="button"
+              onClick={() => {
+                if (showComposer && !confirmDiscardChanges(hasDraftChanges)) return;
+                setShowComposer((current) => !current);
+              }}
+              disabled={!canEdit}
+              className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {showComposer ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Titulo" disabled={!canEdit || isPending} />
-          <input value={draft.related} onChange={(event) => setDraft((current) => ({ ...current, related: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Relacionado con" disabled={!canEdit || isPending} />
-          <input value={draft.dueLabel} onChange={(event) => setDraft((current) => ({ ...current, dueLabel: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Vence" disabled={!canEdit || isPending} />
-          <select value={draft.priority} onChange={(event) => setDraft((current) => ({ ...current, priority: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
-            <option>Urgente</option>
-            <option>Alta</option>
-            <option>Media</option>
-          </select>
-          <button onClick={addTask} disabled={!canEdit || isPending || !draft.title.trim()} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
-            {isPending ? "Guardando..." : "Agregar"}
-          </button>
-          <button onClick={resetDraft} disabled={!canEdit || isPending} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
-            Limpiar
-          </button>
-        </div>
+        {showComposer ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)] xl:col-span-2" placeholder="Titulo" disabled={!canEdit || isPending} />
+            <input value={draft.related} onChange={(event) => setDraft((current) => ({ ...current, related: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Relacionado con" disabled={!canEdit || isPending} />
+            <input value={draft.dueLabel} onChange={(event) => setDraft((current) => ({ ...current, dueLabel: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Vence" disabled={!canEdit || isPending} />
+            <select value={draft.priority} onChange={(event) => setDraft((current) => ({ ...current, priority: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
+              <option>Urgente</option>
+              <option>Alta</option>
+              <option>Media</option>
+            </select>
+            <input value={draft.assignee} onChange={(event) => setDraft((current) => ({ ...current, assignee: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Responsable" disabled={!canEdit || isPending} />
+            <button onClick={addTask} disabled={!canEdit || isPending || !draft.title.trim()} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
+              {isPending ? "Guardando..." : "Agregar"}
+            </button>
+            <button onClick={resetDraft} disabled={!canEdit || isPending} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
+              Limpiar
+            </button>
+          </div>
+        ) : null}
         {error ? <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p> : null}
         {success ? <p className="mt-3 text-sm text-[var(--color-success)]">{success}</p> : null}
       </section>
@@ -338,7 +356,7 @@ export function TasksWorkspace({
                     <span>{task.dueLabel}</span>
                     <span>{task.assignee}</span>
                   </div>
-                  <div className="mt-5 flex gap-3">
+                  <div className="mt-5 flex flex-wrap gap-3">
                     {!task.archived ? (
                       <button onClick={() => toggleDone(task.id)} disabled={!canEdit || isPending} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
                         {task.done ? "Reabrir" : "Marcar completada"}

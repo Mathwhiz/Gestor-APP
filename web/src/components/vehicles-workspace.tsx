@@ -28,6 +28,7 @@ export function VehiclesWorkspace({
   const [items, setItems] = useState<VehicleItem[]>(initialItems);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Todos");
+  const [showComposer, setShowComposer] = useState(false);
   const [draft, setDraft] = useState({
     plate: "",
     name: "",
@@ -81,7 +82,7 @@ export function VehiclesWorkspace({
     editingId !== null &&
     JSON.stringify(editingDraft) !== editingInitial;
 
-  useUnsavedChanges(hasDraftChanges || hasEditChanges);
+  useUnsavedChanges((showComposer && hasDraftChanges) || hasEditChanges);
 
   function addVehicle() {
     if (!canEdit || !draft.plate.trim() || !draft.name.trim()) return;
@@ -104,6 +105,7 @@ export function VehiclesWorkspace({
         status: "En tramite",
         note: "",
       });
+      setShowComposer(false);
       setSuccess("Vehiculo cargado.");
     });
   }
@@ -241,33 +243,50 @@ export function VehiclesWorkspace({
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de vehiculo</p>
-            {hasDraftChanges ? <p className="mt-1 text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en el alta.</p> : null}
+            {showComposer ? <p className="mt-1 text-sm text-[var(--color-warning,#b57628)]">{hasDraftChanges ? "Tenes cambios sin guardar en el alta." : "Abri el alta solo cuando necesites cargar una unidad nueva."}</p> : null}
           </div>
-          {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
+          <div className="flex items-center gap-3">
+            {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
+            <button
+              type="button"
+              onClick={() => {
+                if (showComposer && !confirmDiscardChanges(hasDraftChanges)) return;
+                setShowComposer((current) => !current);
+              }}
+              disabled={!canEdit}
+              className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {showComposer ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <input value={draft.plate} onChange={(event) => setDraft((current) => ({ ...current, plate: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Dominio" disabled={!canEdit || isPending} />
-          <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Unidad" disabled={!canEdit || isPending} />
-          <input value={draft.owner} onChange={(event) => setDraft((current) => ({ ...current, owner: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Titular" disabled={!canEdit || isPending} />
-          <select value={draft.area} onChange={(event) => setDraft((current) => ({ ...current, area: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
-            <option>Gestoria</option>
-            <option>Agencia</option>
-          </select>
-          <select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
-            <option>En tramite</option>
-            <option>En stock</option>
-            <option>Documentacion incompleta</option>
-          </select>
-        </div>
-        <textarea value={draft.note} onChange={(event) => setDraft((current) => ({ ...current, note: event.target.value }))} className="mt-3 min-h-24 w-full rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Nota operativa" disabled={!canEdit || isPending} />
-        <div className="mt-3 flex gap-3">
-        <button onClick={addVehicle} disabled={!canEdit || isPending || !draft.plate.trim() || !draft.name.trim()} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
-          {isPending ? "Guardando..." : "Agregar"}
-        </button>
-        <button onClick={resetDraft} disabled={!canEdit || isPending} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
-          Limpiar
-        </button>
-        </div>
+        {showComposer ? (
+          <>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <input value={draft.plate} onChange={(event) => setDraft((current) => ({ ...current, plate: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Dominio" disabled={!canEdit || isPending} />
+              <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)] xl:col-span-2" placeholder="Unidad" disabled={!canEdit || isPending} />
+              <input value={draft.owner} onChange={(event) => setDraft((current) => ({ ...current, owner: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Titular" disabled={!canEdit || isPending} />
+              <select value={draft.area} onChange={(event) => setDraft((current) => ({ ...current, area: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
+                <option>Gestoria</option>
+                <option>Agencia</option>
+              </select>
+              <select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
+                <option>En tramite</option>
+                <option>En stock</option>
+                <option>Documentacion incompleta</option>
+              </select>
+            </div>
+            <textarea value={draft.note} onChange={(event) => setDraft((current) => ({ ...current, note: event.target.value }))} className="mt-3 min-h-24 w-full rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Nota operativa" disabled={!canEdit || isPending} />
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button onClick={addVehicle} disabled={!canEdit || isPending || !draft.plate.trim() || !draft.name.trim()} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
+                {isPending ? "Guardando..." : "Agregar"}
+              </button>
+              <button onClick={resetDraft} disabled={!canEdit || isPending} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
+                Limpiar
+              </button>
+            </div>
+          </>
+        ) : null}
         {error ? <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p> : null}
         {success ? <p className="mt-3 text-sm text-[var(--color-success)]">{success}</p> : null}
       </section>
@@ -316,7 +335,7 @@ export function VehiclesWorkspace({
                     <p>Nota: {vehicle.note}</p>
                   </div>
                   {canEdit ? (
-                    <div className="mt-5 flex gap-3">
+                    <div className="mt-5 flex flex-wrap gap-3">
                       <Link href={`/vehiculos/${vehicle.id}`} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
                         Abrir ficha
                       </Link>
