@@ -59,9 +59,19 @@ const quickMovementPresets = [
 
 export function FinanceWorkspace({
   initialItems = mockMovements,
+  insights,
   canEdit,
 }: {
   initialItems?: MovementItem[];
+  insights: {
+    areaBalances: { area: string; balance: number }[];
+    topIncomeCategories: { category: string; amount: number }[];
+    topExpenseCategories: { category: string; amount: number }[];
+    proceduresWithoutIncome: number;
+    observedProcedures: number;
+    proceduresPendingDocs: number;
+    openOperationsMargin: number;
+  };
   canEdit: boolean;
 }) {
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Todos");
@@ -128,7 +138,7 @@ export function FinanceWorkspace({
   const expenseTotal = filtered
     .filter((item) => item.amount.startsWith("-"))
     .reduce((total, item) => total + Math.abs(Number(item.amount.replace(/[^\d-]/g, ""))), 0);
-  const areaBalances = ["Gestoria", "Agencia", "General", "Personal"].map((area) => {
+  const filteredAreaBalances = ["Gestoria", "Agencia", "General", "Personal"].map((area) => {
     const areaBalance = items
       .filter((item) => item.area === area)
       .reduce((total, item) => {
@@ -288,6 +298,45 @@ export function FinanceWorkspace({
         </div>
       </section>
 
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Tramites sin cobro</p>
+          <p className="mt-3 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+            {insights.proceduresWithoutIncome}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+            Expedientes activos que todavia no tienen ingreso vinculado cargado.
+          </p>
+        </div>
+        <div className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Pendiente documental</p>
+          <p className="mt-3 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+            {insights.proceduresPendingDocs}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+            Carpetas que probablemente sigan consumiendo tiempo antes de cerrar cobro.
+          </p>
+        </div>
+        <div className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Observados</p>
+          <p className="mt-3 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+            {insights.observedProcedures}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+            Bloqueos operativos que pueden demorar facturacion o entrega.
+          </p>
+        </div>
+        <div className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Margen abierto</p>
+          <p className="mt-3 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+            ${insights.openOperationsMargin.toLocaleString("es-AR")}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+            Margen estimado todavia no cerrado en operaciones activas.
+          </p>
+        </div>
+      </section>
+
       <section className="grid gap-4 rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-4">
           <input
@@ -406,8 +455,62 @@ export function FinanceWorkspace({
         {success ? <p className="mt-3 text-sm text-[var(--color-success)]">{success}</p> : null}
       </section>
 
+      <section className="grid gap-4 xl:grid-cols-2">
+        <div className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                Ingresos por categoria
+              </p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+                Lo que mas esta entrando
+              </h2>
+            </div>
+          </div>
+          <div className="mt-4 space-y-3">
+            {insights.topIncomeCategories.map((item) => (
+              <div
+                key={item.category}
+                className="flex items-center justify-between rounded-2xl bg-[var(--color-panel-soft)] px-4 py-3"
+              >
+                <p className="text-sm font-semibold text-[var(--color-ink)]">{item.category}</p>
+                <p className="text-sm font-semibold text-[var(--color-success)]">
+                  + ${item.amount.toLocaleString("es-AR")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                Egresos por categoria
+              </p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+                Donde mas se esta yendo caja
+              </h2>
+            </div>
+          </div>
+          <div className="mt-4 space-y-3">
+            {insights.topExpenseCategories.map((item) => (
+              <div
+                key={item.category}
+                className="flex items-center justify-between rounded-2xl bg-[var(--color-panel-soft)] px-4 py-3"
+              >
+                <p className="text-sm font-semibold text-[var(--color-ink)]">{item.category}</p>
+                <p className="text-sm font-semibold text-[var(--color-danger)]">
+                  - ${item.amount.toLocaleString("es-AR")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {areaBalances.map((item) => (
+        {filteredAreaBalances.map((item) => (
           <div
             key={item.area}
             className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5"

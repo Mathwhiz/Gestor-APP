@@ -56,6 +56,122 @@ export async function getFinancialMovementsData() {
   }));
 }
 
+type FinanceInsights = {
+  areaBalances: { area: string; balance: number }[];
+  topIncomeCategories: { category: string; amount: number }[];
+  topExpenseCategories: { category: string; amount: number }[];
+  proceduresWithoutIncome: number;
+  observedProcedures: number;
+  proceduresPendingDocs: number;
+  openOperationsMargin: number;
+};
+
+export async function getFinanceInsightsData(): Promise<FinanceInsights> {
+  const [movements, procedures, operations] = await Promise.all([
+    getFinancialMovementsData(),
+    hasDatabase()
+      ? getPrismaClient().procedure.findMany({
+          include: {
+            movements: true,
+          },
+        })
+      : Promise.resolve([]),
+    hasDatabase()
+      ? getPrismaClient().operation.findMany()
+      : Promise.resolve([]),
+  ]);
+
+  const areaBalances = ["Gestoria", "Agencia", "General", "Personal"].map((area) => {
+    const balance = movements
+      .filter((item: (typeof movements)[number]) => item.area === area)
+      .reduce((total: number, item: (typeof movements)[number]) => {
+        const numeric = Number(item.amount.replace(/[^\d-]/g, ""));
+        return item.amount.startsWith("+") ? total + numeric : total - Math.abs(numeric);
+      }, 0);
+
+    return { area, balance };
+  });
+
+  function accumulateCategories(kind: "income" | "expense") {
+    const map = new Map<string, number>();
+
+    movements
+      .filter((item: (typeof movements)[number]) =>
+        kind === "income" ? item.amount.startsWith("+") : item.amount.startsWith("-"),
+      )
+      .forEach((item: (typeof movements)[number]) => {
+        const numeric = Math.abs(Number(item.amount.replace(/[^\d-]/g, "")));
+        map.set(item.category, (map.get(item.category) ?? 0) + numeric);
+      });
+
+    return [...map.entries()]
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 4);
+  }
+
+  if (!hasDatabase()) {
+    return {
+      areaBalances,
+      topIncomeCategories: accumulateCategories("income"),
+      topExpenseCategories: accumulateCategories("expense"),
+      proceduresWithoutIncome: mockProcedures.filter(
+        (procedure: (typeof mockProcedures)[number]) =>
+          procedure.status !== "Terminado" && procedure.status !== "Borrador",
+      ).length,
+      observedProcedures: mockProcedures.filter(
+        (procedure: (typeof mockProcedures)[number]) => procedure.status === "Observado",
+      ).length,
+      proceduresPendingDocs: mockProcedures.filter(
+        (procedure: (typeof mockProcedures)[number]) =>
+          procedure.status === "Pendiente de documentacion",
+      ).length,
+      openOperationsMargin: mockOperations
+        .filter((operation: (typeof mockOperations)[number]) => operation.status !== "Cerrada")
+        .reduce(
+          (total: number, operation: (typeof mockOperations)[number]) =>
+            total + Number(operation.margin.replace(/[^\d-]/g, "")),
+          0,
+        ),
+    };
+  }
+
+  const proceduresWithoutIncome = procedures.filter((procedure: (typeof procedures)[number]) => {
+    const hasPositiveMovement = procedure.movements.some((movement) => movement.amount.startsWith("+"));
+    return (
+      procedure.status !== "TERMINADO" &&
+      procedure.status !== "BORRADOR" &&
+      !hasPositiveMovement
+    );
+  }).length;
+
+  const observedProcedures = procedures.filter(
+    (procedure: (typeof procedures)[number]) => procedure.status === "OBSERVADO",
+  ).length;
+
+  const proceduresPendingDocs = procedures.filter(
+    (procedure: (typeof procedures)[number]) => procedure.status === "PENDIENTE_DOCUMENTACION",
+  ).length;
+
+  const openOperationsMargin = operations
+    .filter((operation: (typeof operations)[number]) => operation.status !== "CERRADA")
+    .reduce(
+      (total: number, operation: (typeof operations)[number]) =>
+        total + Number(operation.margin.replace(/[^\d-]/g, "")),
+      0,
+    );
+
+  return {
+    areaBalances,
+    topIncomeCategories: accumulateCategories("income"),
+    topExpenseCategories: accumulateCategories("expense"),
+    proceduresWithoutIncome,
+    observedProcedures,
+    proceduresPendingDocs,
+    openOperationsMargin,
+  };
+}
+
 export async function getProceduresData() {
   if (!hasDatabase()) return mockProcedures;
   const prisma = getPrismaClient();
