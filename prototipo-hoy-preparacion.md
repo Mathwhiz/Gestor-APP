@@ -353,3 +353,29 @@ Se sigue con:
 - UI compartida entre todas las areas
 - datos mockeados
 - estructura preparada para integrar PostgreSQL o Firestore mas adelante
+
+## 15. Estado actual al 07-04-2026
+
+### Cerrado hoy
+
+- login obligatorio con Google usando Supabase Auth
+- allowlist por Gmail para acceso real
+- deploy productivo en `gestorapp.lat`
+- dominio canonico unificado sin mezclar `www`
+- persistencia real con Prisma + PostgreSQL en Supabase
+- modulos conectados a base: dashboard, tramites, contactos, vehiculos, finanzas, ayudas, tareas y operaciones
+- altas y ediciones reales en modulos principales
+- archivado logico en contactos, tareas, vehiculos y ayudas
+- detalle real de tramite, contacto, vehiculo y operacion
+- buscador global y acciones rapidas reales
+- relaciones reales entre tramites, vehiculos y operaciones
+- validaciones de negocio en server actions
+- proteccion basica contra cambios sin guardar
+- mejora mobile de shell, dashboard, finanzas, tramites y contactos
+
+### Pendiente cercano
+
+- seguir puliendo mobile en operaciones, tareas y vehiculos
+- revisar visualmente produccion desde telefono con datos reales
+- rotar la password de base compartida en el chat
+- decidir si el siguiente bloque es `adjuntos/documentos` o mas pulido de UX
