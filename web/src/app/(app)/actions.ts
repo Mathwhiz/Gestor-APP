@@ -39,7 +39,7 @@ async function resolveContactIdByName(name: string) {
     select: { id: true, name: true },
   });
 
-  const match = contacts.find((contact) => normalizeLookup(contact.name) === normalized);
+  const match = contacts.find((contact: { id: string; name: string }) => normalizeLookup(contact.name) === normalized);
   return match?.id ?? null;
 }
 
@@ -53,10 +53,10 @@ async function resolveVehicleByLabel(label: string) {
     select: { id: true, plate: true, name: true },
   });
 
-  const exactPlate = vehicles.find((vehicle) => normalized.includes(normalizeLookup(vehicle.plate)));
+  const exactPlate = vehicles.find((vehicle: { id: string; plate: string; name: string }) => normalized.includes(normalizeLookup(vehicle.plate)));
   if (exactPlate) return exactPlate;
 
-  const exactName = vehicles.find((vehicle) => normalized.includes(normalizeLookup(vehicle.name)));
+  const exactName = vehicles.find((vehicle: { id: string; plate: string; name: string }) => normalized.includes(normalizeLookup(vehicle.name)));
   if (exactName) return exactName;
 
   return null;
