@@ -1,9 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { tasks as mockTasks } from "@/data/mock-data";
+import {
+  createTaskAction,
+  toggleTaskArchivedAction,
+  toggleTaskDoneAction,
+  updateTaskAction,
+} from "@/app/(app)/actions";
 
 type TaskItem = {
   id: string;
@@ -14,14 +20,17 @@ type TaskItem = {
   assignee: string;
   tone: "success" | "warning" | "danger" | "neutral" | "info";
   done?: boolean;
+  archived?: boolean;
 };
 
-const filters = ["Todas", "Urgente", "Alta", "Media", "Completadas"] as const;
+const filters = ["Todas", "Urgente", "Alta", "Media", "Completadas", "Archivadas"] as const;
 
 export function TasksWorkspace({
   initialItems = mockTasks,
+  canEdit,
 }: {
   initialItems?: TaskItem[];
+  canEdit: boolean;
 }) {
   const [items, setItems] = useState<TaskItem[]>(initialItems);
   const [search, setSearch] = useState("");
@@ -33,6 +42,16 @@ export function TasksWorkspace({
     priority: "Media",
     assignee: "Marcelo",
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState({
+    title: "",
+    related: "",
+    dueLabel: "",
+    priority: "Media",
+    assignee: "",
+  });
+  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(
     () =>
@@ -41,50 +60,124 @@ export function TasksWorkspace({
           !search ||
           `${task.title} ${task.related} ${task.assignee}`.toLowerCase().includes(search.toLowerCase());
         const matchesFilter =
-          activeFilter === "Todas" ||
-          (activeFilter === "Completadas" ? task.done : task.priority === activeFilter);
+          activeFilter === "Todas"
+            ? !task.archived
+            : activeFilter === "Completadas"
+              ? !task.archived && Boolean(task.done)
+              : activeFilter === "Archivadas"
+                ? Boolean(task.archived)
+                : !task.archived && task.priority === activeFilter;
         return matchesSearch && matchesFilter;
       }),
     [activeFilter, items, search],
   );
 
+  function toneFromPriority(priority: string, done?: boolean) {
+    if (done) return "success" as const;
+    if (priority === "Urgente") return "danger" as const;
+    if (priority === "Alta") return "warning" as const;
+    return "info" as const;
+  }
+
   function toggleDone(id: string) {
-    setItems((current) =>
-      current.map((task) =>
-        task.id === id
-          ? { ...task, done: !task.done, tone: !task.done ? "success" : task.tone }
-          : task,
-      ),
-    );
+    if (!canEdit) return;
+
+    setError("");
+    startTransition(async () => {
+      const result = await toggleTaskDoneAction(id);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setItems((current) =>
+        current.map((task) =>
+          task.id === id
+            ? { ...task, done: result.item.done, tone: toneFromPriority(task.priority, result.item.done) }
+            : task,
+        ),
+      );
+    });
   }
 
   function addTask() {
-    if (!draft.title.trim()) return;
-    const tone =
-      draft.priority === "Urgente"
-        ? "danger"
-        : draft.priority === "Alta"
-          ? "warning"
-          : "info";
-    setItems((current) => [
-      {
-        id: `task-${Date.now()}`,
-        title: draft.title,
-        related: draft.related,
-        dueLabel: draft.dueLabel,
-        priority: draft.priority,
-        assignee: draft.assignee,
-        tone,
-        done: false,
-      },
-      ...current,
-    ]);
-    setDraft({
-      title: "",
-      related: "Tramite general",
-      dueLabel: "Hoy - 18:00",
-      priority: "Media",
-      assignee: "Marcelo",
+    if (!canEdit || !draft.title.trim()) return;
+
+    setError("");
+    startTransition(async () => {
+      const result = await createTaskAction(draft);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setItems((current) => [result.item, ...current]);
+      setDraft({
+        title: "",
+        related: "Tramite general",
+        dueLabel: "Hoy - 18:00",
+        priority: "Media",
+        assignee: "Marcelo",
+      });
+    });
+  }
+
+  function toggleArchived(task: TaskItem) {
+    if (!canEdit) return;
+
+    setError("");
+    startTransition(async () => {
+      const result = await toggleTaskArchivedAction({
+        id: task.id,
+        archived: Boolean(task.archived),
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setItems((current) =>
+        current.map((item) =>
+          item.id === task.id ? { ...item, archived: result.item.archived } : item,
+        ),
+      );
+      setEditingId(null);
+    });
+  }
+
+  function startEditing(task: TaskItem) {
+    setEditingId(task.id);
+    setEditingDraft({
+      title: task.title,
+      related: task.related,
+      dueLabel: task.dueLabel,
+      priority: task.priority,
+      assignee: task.assignee,
+    });
+  }
+
+  function saveEdit() {
+    if (!canEdit || !editingId) return;
+
+    setError("");
+    startTransition(async () => {
+      const result = await updateTaskAction({
+        id: editingId,
+        ...editingDraft,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setItems((current) =>
+        current.map((task) =>
+          task.id === editingId
+            ? { ...result.item, tone: toneFromPriority(result.item.priority, result.item.done) }
+            : task,
+        ),
+      );
+      setEditingId(null);
     });
   }
 
@@ -95,27 +188,15 @@ export function TasksWorkspace({
         title="Tareas"
         description="Seguimiento corto del dia, tareas vencidas y proximos movimientos."
         actionLabel="Nueva tarea"
+        actionDisabled={!canEdit}
       />
 
       <section className="grid gap-4 rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-4">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por tarea, responsable o entidad relacionada"
-            className="h-12 w-full rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
-          />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por tarea, responsable o entidad relacionada" className="h-12 w-full rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" />
           <div className="flex flex-wrap gap-3">
             {filters.map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setActiveFilter(filter)}
-                className={`rounded-full border px-4 py-2 text-sm transition ${
-                  activeFilter === filter
-                    ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
-                    : "border-[var(--color-line)] text-[var(--color-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-                }`}
-              >
+              <button key={filter} onClick={() => setActiveFilter(filter)} className={`rounded-full border px-4 py-2 text-sm transition ${activeFilter === filter ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white" : "border-[var(--color-line)] text-[var(--color-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"}`}>
                 {filter}
               </button>
             ))}
@@ -125,97 +206,105 @@ export function TasksWorkspace({
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Pendientes</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              {items.filter((task) => !task.done).length}
-            </p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{items.filter((task) => !task.done && !task.archived).length}</p>
           </div>
           <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Urgentes</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              {items.filter((task) => task.priority === "Urgente" && !task.done).length}
-            </p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{items.filter((task) => task.priority === "Urgente" && !task.done && !task.archived).length}</p>
           </div>
           <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Completadas</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              {items.filter((task) => task.done).length}
-            </p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{items.filter((task) => task.done && !task.archived).length}</p>
+          </div>
+          <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Archivadas</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{items.filter((task) => task.archived).length}</p>
           </div>
         </div>
       </section>
 
       <section className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
-        <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de tarea</p>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de tarea</p>
+          {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
+        </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <input
-            value={draft.title}
-            onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
-            className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
-            placeholder="Titulo"
-          />
-          <input
-            value={draft.related}
-            onChange={(event) => setDraft((current) => ({ ...current, related: event.target.value }))}
-            className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
-            placeholder="Relacionado con"
-          />
-          <input
-            value={draft.dueLabel}
-            onChange={(event) => setDraft((current) => ({ ...current, dueLabel: event.target.value }))}
-            className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
-            placeholder="Vence"
-          />
-          <select
-            value={draft.priority}
-            onChange={(event) => setDraft((current) => ({ ...current, priority: event.target.value }))}
-            className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
-          >
+          <input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Titulo" disabled={!canEdit || isPending} />
+          <input value={draft.related} onChange={(event) => setDraft((current) => ({ ...current, related: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Relacionado con" disabled={!canEdit || isPending} />
+          <input value={draft.dueLabel} onChange={(event) => setDraft((current) => ({ ...current, dueLabel: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Vence" disabled={!canEdit || isPending} />
+          <select value={draft.priority} onChange={(event) => setDraft((current) => ({ ...current, priority: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
             <option>Urgente</option>
             <option>Alta</option>
             <option>Media</option>
           </select>
-          <button
-            onClick={addTask}
-            className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)]"
-          >
-            Agregar
+          <button onClick={addTask} disabled={!canEdit || isPending} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
+            {isPending ? "Guardando..." : "Agregar"}
           </button>
         </div>
+        {error ? <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p> : null}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        {filtered.map((task) => (
-          <article
-            key={task.id}
-            className={`rounded-[28px] border px-5 py-5 ${
-              task.done
-                ? "border-[var(--color-success)]/25 bg-[var(--color-success-soft)]"
-                : "border-[var(--color-line)] bg-white"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">
-                  {task.title}
-                </p>
-                <p className="mt-2 text-sm text-[var(--color-muted)]">{task.related}</p>
-              </div>
-              <StatusBadge tone={task.done ? "success" : task.tone}>
-                {task.done ? "Completada" : task.priority}
-              </StatusBadge>
-            </div>
-            <div className="mt-4 flex items-center justify-between text-sm text-[var(--color-muted)]">
-              <span>{task.dueLabel}</span>
-              <span>{task.assignee}</span>
-            </div>
-            <button
-              onClick={() => toggleDone(task.id)}
-              className="mt-5 rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-            >
-              {task.done ? "Reabrir" : "Marcar completada"}
-            </button>
-          </article>
-        ))}
+        {filtered.map((task) => {
+          const isEditing = editingId === task.id;
+
+          return (
+            <article key={task.id} className={`rounded-[28px] border px-5 py-5 ${task.archived ? "border-[var(--color-line)] bg-[var(--color-panel-soft)] opacity-80" : task.done ? "border-[var(--color-success)]/25 bg-[var(--color-success-soft)]" : "border-[var(--color-line)] bg-white"}`}>
+              {isEditing ? (
+                <div className="space-y-3">
+                  <input value={editingDraft.title} onChange={(event) => setEditingDraft((current) => ({ ...current, title: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" />
+                  <input value={editingDraft.related} onChange={(event) => setEditingDraft((current) => ({ ...current, related: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" />
+                  <input value={editingDraft.dueLabel} onChange={(event) => setEditingDraft((current) => ({ ...current, dueLabel: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <select value={editingDraft.priority} onChange={(event) => setEditingDraft((current) => ({ ...current, priority: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+                      <option>Urgente</option>
+                      <option>Alta</option>
+                      <option>Media</option>
+                    </select>
+                    <input value={editingDraft.assignee} onChange={(event) => setEditingDraft((current) => ({ ...current, assignee: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Responsable" />
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={saveEdit} disabled={isPending} className="rounded-2xl bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-45">Guardar</button>
+                    <button onClick={() => setEditingId(null)} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)]">Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">{task.title}</p>
+                      <p className="mt-2 text-sm text-[var(--color-muted)]">{task.related}</p>
+                    </div>
+                    <StatusBadge tone={task.archived ? "neutral" : task.done ? "success" : task.tone}>{task.archived ? "Archivada" : task.done ? "Completada" : task.priority}</StatusBadge>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between text-sm text-[var(--color-muted)]">
+                    <span>{task.dueLabel}</span>
+                    <span>{task.assignee}</span>
+                  </div>
+                  <div className="mt-5 flex gap-3">
+                    {!task.archived ? (
+                      <button onClick={() => toggleDone(task.id)} disabled={!canEdit || isPending} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
+                        {task.done ? "Reabrir" : "Marcar completada"}
+                      </button>
+                    ) : null}
+                    {canEdit ? (
+                      <>
+                        {!task.archived ? (
+                          <button onClick={() => startEditing(task)} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
+                            Editar
+                          </button>
+                        ) : null}
+                        <button onClick={() => toggleArchived(task)} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
+                          {task.archived ? "Reactivar" : "Archivar"}
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                </>
+              )}
+            </article>
+          );
+        })}
       </section>
     </div>
   );

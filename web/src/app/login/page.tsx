@@ -1,4 +1,32 @@
-export default function LoginPage() {
+import { redirect } from "next/navigation";
+import { getCurrentAppUser } from "@/lib/auth";
+import { getSupabaseAuthEnv } from "@/lib/supabase/env";
+
+const messageMap: Record<string, string> = {
+  code: "Falto el codigo de autenticacion al volver desde Google.",
+  config: "Falta configurar NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+  oauth: "No se pudo iniciar el acceso con Google desde Supabase.",
+  session: "No se pudo abrir la sesion al volver desde Google.",
+  unauthorized: "Ese Gmail no esta habilitado para entrar a la app.",
+};
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const currentUser = await getCurrentAppUser();
+  const { configured } = getSupabaseAuthEnv();
+  const params = await searchParams;
+  const next =
+    typeof params.next === "string" && params.next.startsWith("/") ? params.next : "/dashboard";
+  const messageKey = typeof params.message === "string" ? params.message : "";
+  const message = messageMap[messageKey];
+
+  if (currentUser.user) {
+    redirect(next);
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">
       <div className="grid w-full max-w-5xl overflow-hidden rounded-[32px] border border-[var(--color-line)] bg-white shadow-[0_24px_80px_rgba(17,24,39,0.08)] lg:grid-cols-[1.1fr_0.9fr]">
@@ -12,17 +40,17 @@ export default function LoginPage() {
                 Gestoria, agencia y caja diaria en una sola herramienta.
               </h1>
               <p className="max-w-lg text-sm leading-7 text-white/72 sm:text-base">
-                Prototipo operativo pensado para trabajar desde La Pampa con tramites
-                nacionales, seguimiento documental y control financiero claro.
+                Acceso con Google sobre Supabase para trabajar desde cualquier lugar con base,
+                tramites y caja compartidos.
               </p>
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
             {[
-              ["Tramites activos", "24"],
-              ["Cobros pendientes", "$ 1.280.000"],
-              ["Guias utiles", "12"],
+              ["Base", "Supabase Postgres"],
+              ["Acceso", "Google OAuth"],
+              ["Permisos", "Admin / Editor / Viewer"],
             ].map(([label, value]) => (
               <div
                 key={label}
@@ -42,35 +70,39 @@ export default function LoginPage() {
                 Acceso
               </p>
               <h2 className="text-3xl font-semibold tracking-tight text-[var(--color-ink)]">
-                Ingresar al sistema
+                Ingresar con Google
               </h2>
               <p className="text-sm leading-6 text-[var(--color-muted)]">
-                Para el prototipo el acceso es visual. Luego se conecta auth real.
+                Cada usuario entra con su Gmail y la app le asigna un perfil interno con rol.
               </p>
             </div>
 
-            <div className="space-y-4">
-              <label className="block space-y-2">
-                <span className="text-sm font-medium text-[var(--color-ink)]">Email</span>
-                <input
-                  className="h-12 w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 text-sm outline-none transition focus:border-[var(--color-accent)]"
-                  defaultValue="gestor@demo.com"
-                />
-              </label>
-              <label className="block space-y-2">
-                <span className="text-sm font-medium text-[var(--color-ink)]">Contrasena</span>
-                <input
-                  className="h-12 w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 text-sm outline-none transition focus:border-[var(--color-accent)]"
-                  defaultValue="demo1234"
-                  type="password"
-                />
-              </label>
+            {message ? (
+              <div className="rounded-2xl border border-[rgba(173,95,71,0.26)] bg-[rgba(173,95,71,0.08)] px-4 py-4 text-sm text-[var(--color-ink)]">
+                {message}
+              </div>
+            ) : null}
+
+            {!configured ? (
+              <div className="rounded-2xl border border-[var(--color-line)] bg-white px-4 py-4 text-sm leading-6 text-[var(--color-muted)]">
+                Falta completar las variables publicas de Supabase para habilitar el login real.
+              </div>
+            ) : (
               <a
                 className="flex h-12 items-center justify-center rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)]"
-                href="/dashboard"
+                href={`/auth/login?next=${encodeURIComponent(next)}`}
               >
-                Entrar al prototipo
+                Continuar con Google
               </a>
+            )}
+
+            <div className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
+              <p className="text-sm font-semibold text-[var(--color-ink)]">Checklist de activacion</p>
+              <div className="mt-4 space-y-3 text-sm leading-6 text-[var(--color-muted)]">
+                <p>1. Cargar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.</p>
+                <p>2. Activar Google en Supabase Auth.</p>
+                <p>3. Definir correos en `APP_ADMIN_EMAILS`, `APP_EDITOR_EMAILS` o `APP_ALLOWED_EMAILS`.</p>
+              </div>
             </div>
           </div>
         </section>

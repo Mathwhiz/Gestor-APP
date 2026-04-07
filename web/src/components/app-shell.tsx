@@ -3,18 +3,37 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { GlobalSearch } from "@/components/global-search";
+import { SignOutButton } from "@/components/sign-out-button";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/tramites", label: "Tramites" },
   { href: "/contactos", label: "Contactos" },
   { href: "/vehiculos", label: "Vehiculos" },
+  { href: "/operaciones", label: "Operaciones" },
   { href: "/finanzas", label: "Finanzas" },
   { href: "/ayudas", label: "Ayudas" },
   { href: "/tareas", label: "Tareas" },
 ];
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  role,
+  userLabel,
+  searchItems,
+}: {
+  children: ReactNode;
+  role: "ADMIN" | "EDITOR" | "VIEWER";
+  userLabel: string;
+  searchItems: {
+    id: string;
+    title: string;
+    meta: string;
+    href: string;
+    kind: "tramite" | "contacto" | "vehiculo" | "operacion";
+  }[];
+}) {
   const pathname = usePathname();
 
   return (
@@ -54,18 +73,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="mt-auto space-y-3 pt-8">
             <div className="rounded-[24px] border border-white/10 bg-white/8 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-white/50">Usuario activo</p>
+              <p className="mt-2 text-sm font-semibold text-white">{userLabel}</p>
+              <p className="mt-2 text-sm leading-6 text-white/68">Rol interno: {role}</p>
+            </div>
+            <div className="rounded-[24px] border border-white/10 bg-white/8 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] text-white/50">Jurisdiccion base</p>
               <p className="mt-2 text-sm font-semibold text-white">La Pampa</p>
               <p className="mt-2 text-sm leading-6 text-white/68">
                 Con criterios editables para tramites nacionales y provinciales.
               </p>
             </div>
-            <a
-              href="/login"
-              className="flex items-center justify-center rounded-2xl border border-white/12 px-4 py-3 text-sm text-white/76 transition hover:bg-white/10 hover:text-white"
-            >
-              Volver al acceso
-            </a>
+            <SignOutButton />
           </div>
         </aside>
 
@@ -73,13 +92,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           <header className="flex flex-col gap-4 border-b border-[var(--color-line)] px-5 py-5 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-3">
               <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-muted)]">
-                Prototipo navegable
+                Operacion autenticada
               </p>
               <p className="mt-2 text-sm text-[var(--color-muted)]">
-                Estructura lista para conectar PostgreSQL o Firestore despues.
+                Base conectada en Supabase con acceso listo para usuarios reales.
               </p>
               <div className="flex flex-wrap gap-2">
-                {["Base: La Pampa", "Modo: prototipo", "Datos: mockeados"].map((pill) => (
+                {["Base: La Pampa", "Auth: Google", `Rol: ${role}`].map((pill) => (
                   <span
                     key={pill}
                     className="rounded-full bg-[var(--color-panel-soft)] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]"
@@ -91,9 +110,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <button className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
-                Buscar
-              </button>
+              <GlobalSearch items={searchItems} />
               <button className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)]">
                 Nuevo
               </button>

@@ -1,7 +1,34 @@
 import { ProceduresWorkspace } from "@/components/procedures-workspace";
-import { getProceduresData } from "@/lib/data";
+import { canEditRole, requireAuthenticatedAppUser } from "@/lib/auth";
+import { getContactsData, getProceduresData, getVehiclesData } from "@/lib/data";
 
-export default async function ProceduresPage() {
-  const procedures = await getProceduresData();
-  return <ProceduresWorkspace initialItems={procedures} />;
+export default async function ProceduresPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { profile } = await requireAuthenticatedAppUser();
+  const params = (await searchParams) ?? {};
+  const [procedures, contacts, vehicles] = await Promise.all([
+    getProceduresData(),
+    getContactsData(),
+    getVehiclesData(),
+  ]);
+
+  return (
+    <ProceduresWorkspace
+      initialItems={procedures}
+      contactOptions={contacts.map((contact) => ({ id: contact.id, name: contact.name }))}
+      vehicleOptions={vehicles.map((vehicle) => ({
+        id: vehicle.id,
+        label: `${vehicle.name} - ${vehicle.plate}`,
+      }))}
+      initialShowForm={Boolean(params.client || params.vehicle)}
+      initialDraft={{
+        client: typeof params.client === "string" ? params.client : "",
+        vehicle: typeof params.vehicle === "string" ? params.vehicle : "",
+      }}
+      canEdit={canEditRole(profile.role)}
+    />
+  );
 }

@@ -1,10 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatusBadge } from "@/components/status-badge";
 import { ProcedureDetail } from "@/data/mock-data";
+import {
+  addProcedureMovementAction,
+  addProcedureNoteAction,
+  toggleProcedureRequirementAction,
+  updateProcedureStatusAction,
+} from "@/app/(app)/actions";
 
 const statusOptions = [
   { label: "Pendiente de documentacion", tone: "warning" as const },
@@ -16,9 +22,10 @@ const statusOptions = [
 
 type WorkspaceProps = {
   detail: ProcedureDetail;
+  canEdit: boolean;
 };
 
-export function ProcedureDetailWorkspace({ detail }: WorkspaceProps) {
+export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
   const initialStatus =
     detail.summary.find((item) => item.label === "Estado")?.value ?? "Pendiente de documentacion";
   const initialPriority =
@@ -34,6 +41,8 @@ export function ProcedureDetailWorkspace({ detail }: WorkspaceProps) {
     meta: "Gasto manual - Caja gestoria",
     amount: "- $ 0",
   });
+  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
 
   const statusTone = useMemo(
     () => statusOptions.find((item) => item.label === status)?.tone ?? "neutral",
@@ -43,24 +52,76 @@ export function ProcedureDetailWorkspace({ detail }: WorkspaceProps) {
   const completedRequirements = requirements.filter((item) => item.done).length;
 
   function toggleRequirement(label: string) {
-    setRequirements((current) =>
-      current.map((item) => (item.label === label ? { ...item, done: !item.done } : item)),
-    );
+    if (!canEdit) return;
+
+    setError("");
+    startTransition(async () => {
+      const result = await toggleProcedureRequirementAction({ id: detail.id, label });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setRequirements((current) =>
+        current.map((item) =>
+          item.label === label ? { ...item, done: result.item.done } : item,
+        ),
+      );
+    });
+  }
+
+  function changeStatus(nextStatus: string) {
+    if (!canEdit) return;
+
+    setError("");
+    setStatus(nextStatus);
+    startTransition(async () => {
+      const result = await updateProcedureStatusAction({ id: detail.id, status: nextStatus });
+      if (!result.ok) {
+        setError(result.error);
+        setStatus(initialStatus);
+      }
+    });
   }
 
   function addNote() {
-    if (!noteDraft.trim()) return;
-    setNotes((current) => [noteDraft, ...current]);
-    setNoteDraft("");
+    if (!canEdit || !noteDraft.trim()) return;
+
+    setError("");
+    startTransition(async () => {
+      const result = await addProcedureNoteAction({ id: detail.id, note: noteDraft });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setNotes((current) => [result.item, ...current]);
+      setNoteDraft("");
+    });
   }
 
   function addMovement() {
-    if (!movementDraft.label.trim()) return;
-    setMovements((current) => [movementDraft, ...current]);
-    setMovementDraft({
-      label: "",
-      meta: "Gasto manual - Caja gestoria",
-      amount: "- $ 0",
+    if (!canEdit || !movementDraft.label.trim()) return;
+
+    setError("");
+    startTransition(async () => {
+      const result = await addProcedureMovementAction({
+        id: detail.id,
+        label: movementDraft.label,
+        meta: movementDraft.meta,
+        amount: movementDraft.amount,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setMovements((current) => [result.item, ...current]);
+      setMovementDraft({
+        label: "",
+        meta: "Gasto manual - Caja gestoria",
+        amount: "- $ 0",
+      });
     });
   }
 
@@ -71,6 +132,7 @@ export function ProcedureDetailWorkspace({ detail }: WorkspaceProps) {
         title={detail.title}
         description={`${detail.client} - ${detail.vehicle} - ${detail.registry}`}
         actionLabel="Actualizar estado"
+        actionDisabled={!canEdit}
       />
 
       <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
@@ -158,12 +220,13 @@ export function ProcedureDetailWorkspace({ detail }: WorkspaceProps) {
               {statusOptions.map((option) => (
                 <button
                   key={option.label}
-                  onClick={() => setStatus(option.label)}
+                  onClick={() => changeStatus(option.label)}
+                  disabled={!canEdit || isPending}
                   className={`rounded-full border px-3 py-2 text-xs uppercase tracking-[0.14em] transition ${
                     option.label === status
                       ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
                       : "border-[var(--color-line)] text-[var(--color-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-                  }`}
+                  } disabled:cursor-not-allowed disabled:opacity-45`}
                 >
                   {option.label}
                 </button>
@@ -175,7 +238,8 @@ export function ProcedureDetailWorkspace({ detail }: WorkspaceProps) {
                 <button
                   key={item.label}
                   onClick={() => toggleRequirement(item.label)}
-                  className="flex w-full items-center justify-between rounded-2xl border border-[var(--color-line)] px-4 py-3 text-left transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
+                  disabled={!canEdit || isPending}
+                  className="flex w-full items-center justify-between rounded-2xl border border-[var(--color-line)] px-4 py-3 text-left transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <div>
                     <p className="text-sm font-semibold text-[var(--color-ink)]">{item.label}</p>
@@ -205,7 +269,7 @@ export function ProcedureDetailWorkspace({ detail }: WorkspaceProps) {
           </SectionCard>
 
           <SectionCard title="Caja vinculada" description="Gastos e ingresos relacionados.">
-            <div className="mb-4 grid gap-3 md:grid-cols-[1fr_1fr_180px]">
+            <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_180px_180px]">
               <input
                 value={movementDraft.label}
                 onChange={(event) =>
@@ -213,6 +277,16 @@ export function ProcedureDetailWorkspace({ detail }: WorkspaceProps) {
                 }
                 className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
                 placeholder="Concepto"
+                disabled={!canEdit || isPending}
+              />
+              <input
+                value={movementDraft.meta}
+                onChange={(event) =>
+                  setMovementDraft((current) => ({ ...current, meta: event.target.value }))
+                }
+                className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
+                placeholder="Meta / caja"
+                disabled={!canEdit || isPending}
               />
               <input
                 value={movementDraft.amount}
@@ -221,10 +295,12 @@ export function ProcedureDetailWorkspace({ detail }: WorkspaceProps) {
                 }
                 className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
                 placeholder="- $ 0"
+                disabled={!canEdit || isPending}
               />
               <button
                 onClick={addMovement}
-                className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)]"
+                disabled={!canEdit || isPending}
+                className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
               >
                 Agregar movimiento
               </button>
@@ -322,16 +398,19 @@ export function ProcedureDetailWorkspace({ detail }: WorkspaceProps) {
               <textarea
                 value={noteDraft}
                 onChange={(event) => setNoteDraft(event.target.value)}
-                className="min-h-28 w-full rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm outline-none focus:border-[var(--color-accent)]"
+                className="min-h-28 w-full rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]"
                 placeholder="Agregar nota operativa"
+                disabled={!canEdit || isPending}
               />
               <button
                 onClick={addNote}
-                className="rounded-2xl bg-[var(--color-accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)]"
+                disabled={!canEdit || isPending}
+                className="rounded-2xl bg-[var(--color-accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
               >
                 Guardar nota
               </button>
             </div>
+            {error ? <p className="mb-3 text-sm text-[var(--color-danger)]">{error}</p> : null}
             <div className="space-y-3 text-sm leading-6 text-[var(--color-muted)]">
               {notes.map((note) => (
                 <p key={note} className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-3">

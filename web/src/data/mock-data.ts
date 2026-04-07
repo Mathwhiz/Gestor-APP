@@ -47,7 +47,14 @@ export const vehicles = [
   { id: "vehicle-3", plate: "AC345TR", name: "Volkswagen Gol Trend 2016", owner: "Mariana Lopez", area: "Gestoria", status: "Documentacion incompleta", tone: "danger" as const, note: "Falta autorizacion complementaria." },
 ];
 
+export const operations = [
+  { id: "op-1", type: "Venta", vehicle: "Toyota Corolla XEI 2021 - AG552LM", buyer: "Martin Sosa", seller: "Agencia", date: "06/04/2026", agreedPrice: "$ 18.900.000", realCost: "$ 17.250.000", commission: "$ 0", margin: "$ 1.650.000", status: "Abierta", tone: "info" as const, note: "Unidad publicada, con dos visitas agendadas." },
+  { id: "op-2", type: "Consignacion", vehicle: "Peugeot 208 2020 - AG552LM", buyer: "Sin comprador", seller: "Agencia Ruta 5", date: "05/04/2026", agreedPrice: "$ 14.200.000", realCost: "$ 13.500.000", commission: "$ 700.000", margin: "$ 700.000", status: "Reservada", tone: "warning" as const, note: "Operacion con reserva tomada, pendiente de cierre." },
+  { id: "op-3", type: "Compra", vehicle: "Ford Ranger XLS 2019 - AE918KD", buyer: "Agencia", seller: "Carlos Fernandez", date: "03/04/2026", agreedPrice: "$ 23.500.000", realCost: "$ 22.800.000", commission: "$ 0", margin: "$ 700.000", status: "Cerrada", tone: "success" as const, note: "Ingreso a stock con transferencia ya encaminada." },
+];
+
 export type ProcedureDetail = {
+  id: string;
   title: string;
   client: string;
   vehicle: string;
@@ -62,6 +69,7 @@ export type ProcedureDetail = {
 
 export const procedureDetails: Record<string, ProcedureDetail> = {
   "transferencia-ranger": {
+    id: "transferencia-ranger",
     title: "Transferencia - Ford Ranger 2019",
     client: "Carlos Fernandez",
     vehicle: "AE918KD",

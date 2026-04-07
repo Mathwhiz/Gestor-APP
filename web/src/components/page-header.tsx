@@ -3,6 +3,7 @@ type PageHeaderProps = {
   title: string;
   description: string;
   actionLabel?: string;
+  actionDisabled?: boolean;
 };
 
 export function PageHeader({
@@ -10,6 +11,7 @@ export function PageHeader({
   title,
   description,
   actionLabel,
+  actionDisabled = false,
 }: PageHeaderProps) {
   return (
     <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -24,7 +26,10 @@ export function PageHeader({
       </div>
 
       {actionLabel ? (
-        <button className="rounded-2xl bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)]">
+        <button
+          className="rounded-2xl bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
+          disabled={actionDisabled}
+        >
           {actionLabel}
         </button>
       ) : null}

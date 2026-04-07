@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { procedures as mockProcedures } from "@/data/mock-data";
+import { createProcedureAction } from "@/app/(app)/actions";
 
 type ProcedureItem = {
   id: string;
@@ -21,12 +22,29 @@ const filters = ["Todos", "Pendiente de documentacion", "Observado", "Urgente", 
 
 export function ProceduresWorkspace({
   initialItems = mockProcedures,
+  contactOptions = [],
+  vehicleOptions = [],
+  initialDraft,
+  initialShowForm = false,
+  canEdit,
 }: {
   initialItems?: ProcedureItem[];
+  contactOptions?: { id: string; name: string }[];
+  vehicleOptions?: { id: string; label: string }[];
+  initialDraft?: Partial<{
+    type: string;
+    client: string;
+    vehicle: string;
+    jurisdiction: string;
+    priority: string;
+    targetDate: string;
+  }>;
+  initialShowForm?: boolean;
+  canEdit: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Todos");
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(initialShowForm);
   const [items, setItems] = useState<ProcedureItem[]>(initialItems);
   const [draft, setDraft] = useState({
     type: "Transferencia",
@@ -35,7 +53,11 @@ export function ProceduresWorkspace({
     jurisdiction: "La Pampa",
     priority: "Media",
     targetDate: "15/04/2026",
+    ...initialDraft,
   });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(
     () =>
@@ -56,30 +78,29 @@ export function ProceduresWorkspace({
   );
 
   function addProcedure() {
-    if (!draft.client.trim() || !draft.vehicle.trim()) return;
-    setItems((current) => [
-      {
-        id: `demo-${Date.now()}`,
-        type: draft.type,
-        client: draft.client,
-        vehicle: draft.vehicle,
-        jurisdiction: draft.jurisdiction,
-        priority: draft.priority,
-        targetDate: draft.targetDate,
-        status: "Borrador",
-        statusTone: "neutral",
-      },
-      ...current,
-    ]);
-    setDraft({
-      type: "Transferencia",
-      client: "",
-      vehicle: "",
-      jurisdiction: "La Pampa",
-      priority: "Media",
-      targetDate: "15/04/2026",
+    if (!canEdit || !draft.client.trim() || !draft.vehicle.trim()) return;
+
+    setError("");
+    setSuccess("");
+    startTransition(async () => {
+      const result = await createProcedureAction(draft);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setItems((current) => [result.item, ...current]);
+      setDraft({
+        type: "Transferencia",
+        client: "",
+        vehicle: "",
+        jurisdiction: "La Pampa",
+        priority: "Media",
+        targetDate: "15/04/2026",
+      });
+      setShowForm(false);
+      setSuccess("Tramite creado correctamente.");
     });
-    setShowForm(false);
   }
 
   return (
@@ -89,6 +110,7 @@ export function ProceduresWorkspace({
         title="Tramites"
         description="Vista principal para filtrar pendientes, observados y urgentes."
         actionLabel={showForm ? "Cerrar carga" : "Crear tramite"}
+        actionDisabled={!canEdit}
       />
 
       <section className="grid gap-4 rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5 xl:grid-cols-[1.15fr_0.85fr]">
@@ -139,43 +161,94 @@ export function ProceduresWorkspace({
               Alta rapida de tramite
             </p>
             <p className="mt-1 text-sm text-[var(--color-muted)]">
-              Carga visual en memoria para validar el flujo del MVP.
+              Alta real sobre la base operativa para arrancar el seguimiento.
             </p>
           </div>
           <button
             onClick={() => setShowForm((current) => !current)}
-            className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+            disabled={!canEdit}
+            className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45"
           >
             {showForm ? "Ocultar" : "Mostrar"}
           </button>
         </div>
 
+        {!canEdit ? (
+          <p className="mb-4 text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p>
+        ) : null}
+
         {showForm ? (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-            <select value={draft.type} onChange={(event) => setDraft((c) => ({ ...c, type: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+            <select
+              value={draft.type}
+              onChange={(event) => setDraft((c) => ({ ...c, type: event.target.value }))}
+              className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
+              disabled={isPending}
+            >
               <option>Transferencia</option>
               <option>Duplicado de cedula</option>
               <option>Denuncia de venta</option>
               <option>Patentamiento</option>
             </select>
-            <input value={draft.client} onChange={(event) => setDraft((c) => ({ ...c, client: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Cliente" />
-            <input value={draft.vehicle} onChange={(event) => setDraft((c) => ({ ...c, vehicle: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Vehiculo / dominio" />
-            <select value={draft.jurisdiction} onChange={(event) => setDraft((c) => ({ ...c, jurisdiction: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+            <select
+              value={draft.client}
+              onChange={(event) => setDraft((c) => ({ ...c, client: event.target.value }))}
+              className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
+              disabled={isPending}
+            >
+              <option value="">Seleccionar cliente</option>
+              {contactOptions.map((contact) => (
+                <option key={contact.id} value={contact.name}>
+                  {contact.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={draft.vehicle}
+              onChange={(event) => setDraft((c) => ({ ...c, vehicle: event.target.value }))}
+              className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
+              disabled={isPending}
+            >
+              <option value="">Seleccionar vehiculo</option>
+              {vehicleOptions.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.label}>
+                  {vehicle.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={draft.jurisdiction}
+              onChange={(event) => setDraft((c) => ({ ...c, jurisdiction: event.target.value }))}
+              className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
+              disabled={isPending}
+            >
               <option>La Pampa</option>
               <option>Nacional</option>
               <option>Buenos Aires</option>
               <option>CABA</option>
             </select>
-            <select value={draft.priority} onChange={(event) => setDraft((c) => ({ ...c, priority: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+            <select
+              value={draft.priority}
+              onChange={(event) => setDraft((c) => ({ ...c, priority: event.target.value }))}
+              className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
+              disabled={isPending}
+            >
               <option>Urgente</option>
               <option>Alta</option>
               <option>Media</option>
             </select>
-            <button onClick={addProcedure} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)]">
-              Agregar
+            <button
+              onClick={addProcedure}
+              disabled={isPending}
+              className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:opacity-45"
+            >
+              {isPending ? "Guardando..." : "Agregar"}
             </button>
           </div>
         ) : null}
+
+        {error ? <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p> : null}
+        {success ? <p className="mt-3 text-sm text-[var(--color-success)]">{success}</p> : null}
       </section>
 
       <section className="overflow-hidden rounded-[28px] border border-[var(--color-line)] bg-white">
@@ -193,7 +266,7 @@ export function ProceduresWorkspace({
             {filtered.map((procedure) => (
               <tr key={procedure.id} className="transition hover:bg-[var(--color-panel-soft)]">
                 <td className="px-5 py-4">
-                  <a href={procedure.id === "transferencia-ranger" ? `/tramites/${procedure.id}` : "#"} className="text-sm font-semibold text-[var(--color-ink)]">
+                  <a href={`/tramites/${procedure.id}`} className="text-sm font-semibold text-[var(--color-ink)]">
                     {procedure.type}
                   </a>
                 </td>

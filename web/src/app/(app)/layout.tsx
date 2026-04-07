@@ -1,9 +1,21 @@
 import { AppShell } from "@/components/app-shell";
+import { requireAuthenticatedAppUser } from "@/lib/auth";
+import { getDashboardData } from "@/lib/data";
 
-export default function AuthenticatedLayout({
+export default async function AuthenticatedLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <AppShell>{children}</AppShell>;
+  const { user, profile } = await requireAuthenticatedAppUser();
+  const { searchItems } = await getDashboardData();
+  return (
+    <AppShell
+      role={profile.role}
+      userLabel={profile.fullName ?? user.email ?? "Usuario"}
+      searchItems={searchItems}
+    >
+      {children}
+    </AppShell>
+  );
 }

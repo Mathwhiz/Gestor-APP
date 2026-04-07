@@ -52,6 +52,38 @@ enum TaskPriority {
   MEDIA
 }
 
+enum AppRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum VehicleArea {
+  GESTORIA
+  AGENCIA
+}
+
+enum VehicleStatus {
+  EN_TRAMITE
+  EN_STOCK
+  DOCUMENTACION_INCOMPLETA
+}
+
+enum OperationType {
+  COMPRA
+  VENTA
+  CONSIGNACION
+  RESERVA
+  PERMUTA
+}
+
+enum OperationStatus {
+  ABIERTA
+  RESERVADA
+  CERRADA
+  ANULADA
+}
+
 model Contact {
   id        String        @id @default(cuid())
   name      String
@@ -60,10 +92,13 @@ model Contact {
   phone     String?
   location  String?
   status    ContactStatus @default(ACTIVO)
+  archivedAt DateTime?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
   procedures Procedure[]
+  buyerOperations  Operation[] @relation("OperationBuyer")
+  sellerOperations Operation[] @relation("OperationSeller")
 }
 
 model Procedure {
@@ -84,6 +119,8 @@ model Procedure {
 
   contactId String?
   contact   Contact?              @relation(fields: [contactId], references: [id])
+  vehicleId String?
+  vehicle   Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
 
   requirements ProcedureRequirement[]
   timeline     ProcedureTimeline[]
@@ -148,6 +185,7 @@ model Task {
   priority  TaskPriority
   assignee  String
   done      Boolean      @default(false)
+  archivedAt DateTime?
   createdAt DateTime     @default(now())
 }
 
@@ -159,5 +197,58 @@ model Guide {
   jurisdiction String
   lastUpdate   String
   highlights   String[]
+  archivedAt   DateTime?
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+}
+
+model Vehicle {
+  id        String        @id @default(cuid())
+  plate     String        @unique
+  name      String
+  owner     String
+  area      VehicleArea
+  status    VehicleStatus
+  note      String
+  archivedAt DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  operations Operation[]
+  procedures Procedure[]
+}
+
+model Operation {
+  id             String          @id @default(cuid())
+  vehicleId      String?
+  buyerId        String?
+  sellerId       String?
+  vehicleLabel   String
+  type           OperationType
+  buyerName      String?
+  sellerName     String?
+  dateLabel      String
+  agreedPrice    String
+  realCost       String
+  commission     String?
+  margin         String
+  status         OperationStatus
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  buyer   Contact? @relation("OperationBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
+  seller  Contact? @relation("OperationSeller", fields: [sellerId], references: [id], onDelete: SetNull)
+}
+
+model UserProfile {
+  id           String   @id
+  email        String   @unique
+  fullName     String?
+  avatarUrl    String?
+  role         AppRole  @default(VIEWER)
+  lastSignInAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

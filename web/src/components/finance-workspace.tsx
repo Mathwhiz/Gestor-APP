@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { movements as mockMovements } from "@/data/mock-data";
+import { createFinancialMovementAction, updateFinancialMovementAction } from "@/app/(app)/actions";
 
 type MovementItem = (typeof mockMovements)[number];
 
@@ -10,8 +11,10 @@ const filters = ["Todos", "Ingresos", "Egresos", "Gestoria", "Agencia", "General
 
 export function FinanceWorkspace({
   initialItems = mockMovements,
+  canEdit,
 }: {
   initialItems?: MovementItem[];
+  canEdit: boolean;
 }) {
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Todos");
   const [search, setSearch] = useState("");
@@ -23,6 +26,17 @@ export function FinanceWorkspace({
     account: "Caja gestoria",
     amount: "+ $ 0",
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState({
+    description: "",
+    category: "",
+    area: "Gestoria",
+    account: "",
+    amount: "",
+  });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(
     () =>
@@ -48,25 +62,49 @@ export function FinanceWorkspace({
   }, 0);
 
   function addMovement() {
-    if (!draft.description.trim()) return;
-    setItems((current) => [
-      {
-        id: `mov-${Date.now()}`,
-        date: "06/04/2026",
-        description: draft.description,
-        category: draft.category,
-        area: draft.area,
-        account: draft.account,
-        amount: draft.amount,
-      },
-      ...current,
-    ]);
-    setDraft({
-      description: "",
-      category: "Otros ingresos",
-      area: "Gestoria",
-      account: "Caja gestoria",
-      amount: "+ $ 0",
+    if (!canEdit || !draft.description.trim()) return;
+
+    setError("");
+    setSuccess("");
+    startTransition(async () => {
+      const result = await createFinancialMovementAction(draft);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setItems((current) => [result.item, ...current]);
+      setDraft({
+        description: "",
+        category: "Otros ingresos",
+        area: "Gestoria",
+        account: "Caja gestoria",
+        amount: "+ $ 0",
+      });
+      setSuccess("Movimiento cargado.");
+    });
+  }
+
+  function saveEdit() {
+    if (!canEdit || !editingId) return;
+
+    setError("");
+    setSuccess("");
+    startTransition(async () => {
+      const result = await updateFinancialMovementAction({
+        id: editingId,
+        ...editingDraft,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setItems((current) =>
+        current.map((movement) => (movement.id === editingId ? result.item : movement)),
+      );
+      setEditingId(null);
+      setSuccess("Movimiento actualizado.");
     });
   }
 
@@ -77,6 +115,7 @@ export function FinanceWorkspace({
         title="Libro de movimientos"
         description="Caja diaria, gastos, cobros y separacion por area de negocio."
         actionLabel="Nuevo movimiento"
+        actionDisabled={!canEdit}
       />
 
       <section className="grid gap-4 rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5 xl:grid-cols-[1.1fr_0.9fr]">
@@ -123,51 +162,92 @@ export function FinanceWorkspace({
       </section>
 
       <section className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
-        <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Carga rapida de movimiento</p>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Carga rapida de movimiento</p>
+          {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
+        </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <input value={draft.description} onChange={(event) => setDraft((c) => ({ ...c, description: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Descripcion" />
-          <select value={draft.category} onChange={(event) => setDraft((c) => ({ ...c, category: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+          <input value={draft.description} onChange={(event) => setDraft((c) => ({ ...c, description: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Descripcion" disabled={!canEdit || isPending} />
+          <select value={draft.category} onChange={(event) => setDraft((c) => ({ ...c, category: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
             <option>Otros ingresos</option>
             <option>Honorarios de tramites</option>
             <option>Aranceles</option>
             <option>Comisiones pagadas</option>
             <option>Alquiler</option>
           </select>
-          <select value={draft.area} onChange={(event) => setDraft((c) => ({ ...c, area: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
+          <select value={draft.area} onChange={(event) => setDraft((c) => ({ ...c, area: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" disabled={!canEdit || isPending}>
             <option>Gestoria</option>
             <option>Agencia</option>
             <option>General</option>
             <option>Personal</option>
           </select>
-          <input value={draft.amount} onChange={(event) => setDraft((c) => ({ ...c, amount: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="+ $ 0" />
-          <button onClick={addMovement} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)]">
-            Agregar
+          <input value={draft.amount} onChange={(event) => setDraft((c) => ({ ...c, amount: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="+ $ 0" disabled={!canEdit || isPending} />
+          <button onClick={addMovement} disabled={!canEdit || isPending} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
+            {isPending ? "Guardando..." : "Agregar"}
           </button>
         </div>
+        {error ? <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p> : null}
+        {success ? <p className="mt-3 text-sm text-[var(--color-success)]">{success}</p> : null}
       </section>
 
       <section className="overflow-hidden rounded-[28px] border border-[var(--color-line)] bg-white">
         <table className="min-w-full divide-y divide-[var(--color-line)] text-left">
           <thead className="bg-[var(--color-panel-soft)] text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
             <tr>
-              {["Fecha", "Descripcion", "Categoria", "Area", "Cuenta", "Importe"].map((heading) => (
+              {["Fecha", "Descripcion", "Categoria", "Area", "Cuenta", "Importe", ""].map((heading) => (
                 <th key={heading} className="px-5 py-4 font-medium">{heading}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-line)]">
-            {filtered.map((movement) => (
-              <tr key={movement.id} className="transition hover:bg-[var(--color-panel-soft)]">
-                <td className="px-5 py-4 font-mono text-sm text-[var(--color-muted)]">{movement.date}</td>
-                <td className="px-5 py-4 text-sm font-semibold text-[var(--color-ink)]">{movement.description}</td>
-                <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{movement.category}</td>
-                <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{movement.area}</td>
-                <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{movement.account}</td>
-                <td className={`px-5 py-4 text-sm font-semibold ${movement.amount.startsWith("+") ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"}`}>
-                  {movement.amount}
-                </td>
-              </tr>
-            ))}
+            {filtered.map((movement) => {
+              const isEditing = editingId === movement.id;
+
+              return (
+                <tr key={movement.id} className="transition hover:bg-[var(--color-panel-soft)]">
+                  <td className="px-5 py-4 font-mono text-sm text-[var(--color-muted)]">{movement.date}</td>
+                  {isEditing ? (
+                    <>
+                      <td className="px-5 py-4"><input value={editingDraft.description} onChange={(event) => setEditingDraft((current) => ({ ...current, description: event.target.value }))} className="h-10 w-full rounded-xl border border-[var(--color-line)] px-3 text-sm outline-none focus:border-[var(--color-accent)]" /></td>
+                      <td className="px-5 py-4"><input value={editingDraft.category} onChange={(event) => setEditingDraft((current) => ({ ...current, category: event.target.value }))} className="h-10 w-full rounded-xl border border-[var(--color-line)] px-3 text-sm outline-none focus:border-[var(--color-accent)]" /></td>
+                      <td className="px-5 py-4"><select value={editingDraft.area} onChange={(event) => setEditingDraft((current) => ({ ...current, area: event.target.value }))} className="h-10 w-full rounded-xl border border-[var(--color-line)] px-3 text-sm outline-none focus:border-[var(--color-accent)]"><option>Gestoria</option><option>Agencia</option><option>General</option><option>Personal</option></select></td>
+                      <td className="px-5 py-4"><input value={editingDraft.account} onChange={(event) => setEditingDraft((current) => ({ ...current, account: event.target.value }))} className="h-10 w-full rounded-xl border border-[var(--color-line)] px-3 text-sm outline-none focus:border-[var(--color-accent)]" /></td>
+                      <td className="px-5 py-4"><input value={editingDraft.amount} onChange={(event) => setEditingDraft((current) => ({ ...current, amount: event.target.value }))} className="h-10 w-full rounded-xl border border-[var(--color-line)] px-3 text-sm outline-none focus:border-[var(--color-accent)]" /></td>
+                      <td className="px-5 py-4">
+                        <div className="flex gap-2">
+                          <button onClick={saveEdit} disabled={isPending} className="rounded-xl bg-[var(--color-accent)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-45">Guardar</button>
+                          <button onClick={() => setEditingId(null)} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)]">Cancelar</button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-5 py-4 text-sm font-semibold text-[var(--color-ink)]">{movement.description}</td>
+                      <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{movement.category}</td>
+                      <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{movement.area}</td>
+                      <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{movement.account}</td>
+                      <td className={`px-5 py-4 text-sm font-semibold ${movement.amount.startsWith("+") ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"}`}>{movement.amount}</td>
+                      <td className="px-5 py-4">
+                        {canEdit ? (
+                          <button onClick={() => {
+                            setEditingId(movement.id);
+                            setEditingDraft({
+                              description: movement.description,
+                              category: movement.category,
+                              area: movement.area,
+                              account: movement.account,
+                              amount: movement.amount,
+                            });
+                          }} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
+                            Editar
+                          </button>
+                        ) : null}
+                      </td>
+                    </>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </section>
