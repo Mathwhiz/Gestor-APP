@@ -102,7 +102,10 @@ export async function getTasksData(options?: { includeArchived?: boolean }) {
 
 export async function getGuidesData(options?: { includeArchived?: boolean }) {
   if (!hasDatabase()) {
-    return mockGuides.map((guide) => ({ ...guide, archived: false }));
+    return mockGuides.map((guide: (typeof mockGuides)[number]) => ({
+      ...guide,
+      archived: false,
+    }));
   }
   const prisma = getPrismaClient();
 
@@ -563,17 +566,19 @@ export async function getDashboardData() {
   ]);
 
   const urgentProcedures = procedures.filter(
-    (procedure) =>
+    (procedure: (typeof procedures)[number]) =>
       procedure.priority === "Urgente" ||
       procedure.status === "Observado" ||
       procedure.status === "Pendiente de documentacion",
   );
-  const pendingTasks = tasks.filter((task) => !("done" in task) || !task.done);
+  const pendingTasks = tasks.filter((task: (typeof tasks)[number]) => !("done" in task) || !task.done);
   const pendingCollections = movements
-    .filter((movement) => movement.amount.startsWith("+"))
-    .reduce((total, movement) => total + Number(movement.amount.replace(/[^\d-]/g, "")), 0);
-  const openOperations = operations.filter((operation) => operation.status !== "Cerrada");
-  const cashBalance = movements.reduce((total, movement) => {
+    .filter((movement: (typeof movements)[number]) => movement.amount.startsWith("+"))
+    .reduce((total, movement: (typeof movements)[number]) => total + Number(movement.amount.replace(/[^\d-]/g, "")), 0);
+  const openOperations = operations.filter(
+    (operation: (typeof operations)[number]) => operation.status !== "Cerrada",
+  );
+  const cashBalance = movements.reduce((total, movement: (typeof movements)[number]) => {
     const amount = Number(movement.amount.replace(/[^\d-]/g, ""));
     return movement.amount.startsWith("+") ? total + amount : total - Math.abs(amount);
   }, 0);
@@ -642,7 +647,9 @@ export async function getDashboardData() {
     ],
     quickStats: {
       urgentProcedures: urgentProcedures.length,
-      observedProcedures: procedures.filter((procedure) => procedure.status === "Observado").length,
+      observedProcedures: procedures.filter(
+        (procedure: (typeof procedures)[number]) => procedure.status === "Observado",
+      ).length,
       pendingCollections,
       cashBalance,
     },
