@@ -16,7 +16,12 @@ export function hasDatabase() {
 }
 
 export async function getContactsData(options?: { includeArchived?: boolean }) {
-  if (!hasDatabase()) return mockContacts.map((contact) => ({ ...contact, archived: false }));
+  if (!hasDatabase()) {
+    return mockContacts.map((contact: (typeof mockContacts)[number]) => ({
+      ...contact,
+      archived: false,
+    }));
+  }
   const prisma = getPrismaClient();
 
   const contacts = await prisma.contact.findMany({
@@ -70,7 +75,12 @@ export async function getProceduresData() {
 }
 
 export async function getTasksData(options?: { includeArchived?: boolean }) {
-  if (!hasDatabase()) return mockTasks.map((task) => ({ ...task, archived: false }));
+  if (!hasDatabase()) {
+    return mockTasks.map((task: (typeof mockTasks)[number]) => ({
+      ...task,
+      archived: false,
+    }));
+  }
   const prisma = getPrismaClient();
 
   const tasks = await prisma.task.findMany({
@@ -113,7 +123,12 @@ export async function getGuidesData(options?: { includeArchived?: boolean }) {
 }
 
 export async function getVehiclesData(options?: { includeArchived?: boolean }) {
-  if (!hasDatabase()) return mockVehicles.map((vehicle) => ({ ...vehicle, archived: false }));
+  if (!hasDatabase()) {
+    return mockVehicles.map((vehicle: (typeof mockVehicles)[number]) => ({
+      ...vehicle,
+      archived: false,
+    }));
+  }
   const prisma = getPrismaClient();
 
   const vehicles = await prisma.vehicle.findMany({
@@ -361,7 +376,8 @@ export async function getContactDetailData(id: string): Promise<ContactDetail | 
     location: contact.location ?? "Sin localidad",
     status: contact.archivedAt ? "Archivado" : formatLabel(contact.status),
     archived: Boolean(contact.archivedAt),
-    procedures: contact.procedures.map((procedure) => ({
+    procedures: contact.procedures.map(
+      (procedure: (typeof contact.procedures)[number]) => ({
       id: procedure.slug,
       type: procedure.type,
       vehicle: procedure.vehicleLabel,
@@ -369,7 +385,8 @@ export async function getContactDetailData(id: string): Promise<ContactDetail | 
       statusTone: mapProcedureTone(procedure.status),
       priority: formatLabel(procedure.priority),
       targetDate: procedure.targetDate,
-    })),
+      }),
+    ),
     operations: operations.map((operation: (typeof operations)[number]) => ({
       id: operation.id,
       type: formatLabel(operation.type),
@@ -594,28 +611,28 @@ export async function getDashboardData() {
     guides,
     operations,
     searchItems: [
-      ...procedures.map((procedure) => ({
+      ...procedures.map((procedure: (typeof procedures)[number]) => ({
         id: procedure.id,
         title: procedure.type,
         meta: `${procedure.client} - ${procedure.vehicle}`,
         href: `/tramites/${procedure.id}`,
         kind: "tramite" as const,
       })),
-      ...contacts.map((contact) => ({
+      ...contacts.map((contact: (typeof contacts)[number]) => ({
         id: contact.id,
         title: contact.name,
         meta: `${contact.role} - ${contact.location}`,
         href: `/contactos/${contact.id}`,
         kind: "contacto" as const,
       })),
-      ...vehicles.map((vehicle) => ({
+      ...vehicles.map((vehicle: (typeof vehicles)[number]) => ({
         id: vehicle.id,
         title: `${vehicle.name} - ${vehicle.plate}`,
         meta: `${vehicle.owner} - ${vehicle.status}`,
         href: `/vehiculos/${vehicle.id}`,
         kind: "vehiculo" as const,
       })),
-      ...operations.map((operation) => ({
+      ...operations.map((operation: (typeof operations)[number]) => ({
         id: operation.id,
         title: `${operation.type} - ${operation.vehicle}`,
         meta: `${operation.buyer} / ${operation.seller} - ${operation.status}`,
