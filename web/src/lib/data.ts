@@ -696,17 +696,17 @@ export async function getProcedureDetailData(id: string): Promise<ProcedureDetai
       { label: "Jurisdiccion", value: procedure.jurisdiction },
       { label: "Honorarios", value: "$ 0" },
     ],
-    requirements: procedure.requirements.map((item) => ({
+    requirements: procedure.requirements.map((item: (typeof procedure.requirements)[number]) => ({
       label: item.label,
       note: item.note ?? "",
       done: item.done,
     })),
-    timeline: procedure.timeline.map((item) => ({
+    timeline: procedure.timeline.map((item: (typeof procedure.timeline)[number]) => ({
       title: item.title,
       description: item.description,
       date: item.dateLabel,
     })),
-    movements: procedure.movements.map((item) => ({
+    movements: procedure.movements.map((item: (typeof procedure.movements)[number]) => ({
       label: item.label,
       meta: item.meta,
       amount: item.amount,
@@ -717,7 +717,7 @@ export async function getProcedureDetailData(id: string): Promise<ProcedureDetai
       steps: ["Completar configuracion de este tramite en base real."],
       links: [],
     },
-    notes: procedure.notes.map((item) => item.body),
+    notes: procedure.notes.map((item: (typeof procedure.notes)[number]) => item.body),
   };
 }
 
@@ -725,7 +725,7 @@ function formatLabel(value: string) {
   return value
     .toLowerCase()
     .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
 
