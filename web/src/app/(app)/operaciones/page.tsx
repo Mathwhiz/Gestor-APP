@@ -15,11 +15,14 @@ export default async function OperationsPage({
     getVehiclesData(),
   ]);
 
+  type ContactOption = (typeof contacts)[number];
+  type VehicleOption = (typeof vehicles)[number];
+
   return (
     <OperationsWorkspace
       initialItems={operations}
-      contactOptions={contacts.map((contact) => ({ id: contact.id, name: contact.name }))}
-      vehicleOptions={vehicles.map((vehicle) => ({
+      contactOptions={contacts.map((contact: ContactOption) => ({ id: contact.id, name: contact.name }))}
+      vehicleOptions={vehicles.map((vehicle: VehicleOption) => ({
         id: vehicle.id,
         label: `${vehicle.name} - ${vehicle.plate}`,
       }))}
