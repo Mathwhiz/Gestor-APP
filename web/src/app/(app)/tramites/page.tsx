@@ -26,7 +26,9 @@ export default async function ProceduresPage({
         id: vehicle.id,
         label: `${vehicle.name} - ${vehicle.plate}`,
       }))}
-      initialShowForm={Boolean(params.client || params.vehicle)}
+      initialShowForm={
+        params.create === "1" || params.create === "true" || Boolean(params.client || params.vehicle)
+      }
       initialDraft={{
         client: typeof params.client === "string" ? params.client : "",
         vehicle: typeof params.vehicle === "string" ? params.vehicle : "",

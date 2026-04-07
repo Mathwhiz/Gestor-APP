@@ -17,6 +17,13 @@ const navigation = [
   { href: "/tareas", label: "Tareas" },
 ];
 
+const quickCreateLinks = [
+  { href: "/tramites?create=1", label: "Nuevo tramite", description: "Abrir alta rapida de gestion." },
+  { href: "/contactos", label: "Nuevo contacto", description: "Cargar cliente, tercero u organismo." },
+  { href: "/tareas", label: "Nueva tarea", description: "Registrar seguimiento del dia." },
+  { href: "/operaciones", label: "Nueva operacion", description: "Pasar una unidad a seguimiento comercial." },
+];
+
 export function AppShell({
   children,
   role,
@@ -36,6 +43,7 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [quickMenuOpen, setQuickMenuOpen] = useState(false);
 
   function closeMobileMenu() {
     setMobileMenuOpen(false);
@@ -172,9 +180,35 @@ export function AppShell({
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <GlobalSearch items={searchItems} />
-              <button className="w-full rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] sm:w-auto">
-                Nuevo
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setQuickMenuOpen((current) => !current)}
+                  className="w-full rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] sm:w-auto"
+                >
+                  Nuevo
+                </button>
+                {quickMenuOpen ? (
+                  <div className="absolute right-0 z-20 mt-3 w-[min(92vw,320px)] rounded-[24px] border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_70px_rgba(23,52,63,0.16)]">
+                    <p className="px-2 pt-1 text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                      Altas rapidas
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {quickCreateLinks.map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setQuickMenuOpen(false)}
+                          className="block rounded-2xl border border-[var(--color-line)] px-4 py-3 transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
+                        >
+                          <p className="text-sm font-semibold text-[var(--color-ink)]">{item.label}</p>
+                          <p className="mt-1 text-sm text-[var(--color-muted)]">{item.description}</p>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </header>
 

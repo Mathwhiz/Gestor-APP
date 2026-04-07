@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -15,6 +16,27 @@ type GuideItem = (typeof mockGuides)[number] & {
 };
 
 const scopeFilters = ["Todas", "Base", "Interna", "Archivadas"] as const;
+
+const operationPlaybooks = [
+  {
+    title: "Alta de carpeta nueva",
+    detail: "Arrancar por contacto, vehiculo, tipo de tramite y fecha objetivo para no dejar seguimiento afuera desde el primer dia.",
+    href: "/tramites?create=1",
+    cta: "Abrir tramite",
+  },
+  {
+    title: "Revisar observados del dia",
+    detail: "Cruzar pendientes, pedir faltantes y dejar trazabilidad antes de mover otra carpeta.",
+    href: "/dashboard",
+    cta: "Ver dashboard",
+  },
+  {
+    title: "Cerrar caja con contexto",
+    detail: "Controlar cobros, gastos y criterio de imputacion antes de cerrar el dia operativo.",
+    href: "/finanzas",
+    cta: "Ir a finanzas",
+  },
+];
 
 const emptyDraft = {
   title: "",
@@ -66,6 +88,9 @@ export function GuidesWorkspace({
       }),
     [activeFilter, items, search],
   );
+  const activeItems = items.filter((item) => !item.archived);
+  const internalItems = activeItems.filter((item) => item.scope === "Interna");
+  const recentItems = activeItems.slice(0, 3);
 
   function addGuide() {
     if (!canEdit) return;
@@ -161,6 +186,59 @@ export function GuidesWorkspace({
         actionLabel="Nueva guia"
         actionDisabled={!canEdit}
       />
+
+      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[28px] border border-[var(--color-line)] bg-[linear-gradient(135deg,#f2e4cf_0%,#f7efe3_55%,#fffaf3_100%)] px-5 py-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
+            Como usar esta base
+          </p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+            Ayudas para decidir mas rapido, no solo para guardar texto.
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-muted)]">
+            Mezcla guias base para tramites repetidos con criterios internos del estudio. La idea es
+            resolver dudas de mostrador, observaciones y cierre diario sin salir del sistema.
+          </p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Base activa</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+                {activeItems.length}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Criterios internos</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+                {internalItems.length}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Ultimas visibles</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+                {recentItems.length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          {operationPlaybooks.map((playbook) => (
+            <Link
+              key={playbook.title}
+              href={playbook.href}
+              className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5 transition hover:border-[var(--color-accent)] hover:shadow-[0_18px_40px_rgba(23,52,63,0.08)]"
+            >
+              <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">
+                {playbook.title}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">{playbook.detail}</p>
+              <p className="mt-4 text-xs uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                {playbook.cta}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <section className="grid gap-4 rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-4">
@@ -274,6 +352,17 @@ export function GuidesWorkspace({
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
+        {visibleItems.length === 0 ? (
+          <div className="lg:col-span-2 rounded-[28px] border border-dashed border-[var(--color-line)] bg-white px-6 py-10 text-center">
+            <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">
+              No hay guias para este filtro
+            </p>
+            <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">
+              Proba con otra busqueda, cambia el alcance o carga una guia base para que el equipo no
+              resuelva de memoria.
+            </p>
+          </div>
+        ) : null}
         {visibleItems.map((guide) => {
           const isEditing = editingId === guide.id;
 

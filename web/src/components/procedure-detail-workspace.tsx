@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
@@ -33,6 +34,7 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
 
   const [status, setStatus] = useState(initialStatus);
   const [requirements, setRequirements] = useState(detail.requirements);
+  const [timeline, setTimeline] = useState(detail.timeline);
   const [notes, setNotes] = useState(detail.notes);
   const [movements, setMovements] = useState(detail.movements);
   const [noteDraft, setNoteDraft] = useState("");
@@ -50,6 +52,41 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
   );
 
   const completedRequirements = requirements.filter((item) => item.done).length;
+  const pendingRequirements = requirements.filter((item) => !item.done);
+  const positiveMovements = movements.filter((item) => item.amount.startsWith("+"));
+  const negativeMovements = movements.filter((item) => item.amount.startsWith("-"));
+  const riskLabel =
+    pendingRequirements.length > 0
+      ? `${pendingRequirements.length} requisito${pendingRequirements.length === 1 ? "" : "s"} pendiente${pendingRequirements.length === 1 ? "" : "s"}`
+      : status === "Observado"
+        ? "Observacion abierta"
+        : "Sin bloqueo critico";
+  const actionCards = [
+    {
+      title: "Ir al checklist",
+      description: "Cerrar documentacion antes de cambiar el estado operativo.",
+      href: "#checklist",
+      external: false,
+    },
+    {
+      title: "Registrar movimiento",
+      description: "Cargar cobro o gasto vinculado a esta carpeta.",
+      href: "#caja",
+      external: false,
+    },
+    {
+      title: "Dejar nota operativa",
+      description: "Registrar criterio interno o decision tomada.",
+      href: "#notas",
+      external: false,
+    },
+    {
+      title: "Abrir ayuda del tramite",
+      description: "Consultar guia base y referencias de jurisdiccion.",
+      href: "/ayudas",
+      external: true,
+    },
+  ];
 
   function toggleRequirement(label: string) {
     if (!canEdit) return;
@@ -67,6 +104,7 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
           item.label === label ? { ...item, done: result.item.done } : item,
         ),
       );
+      setTimeline((current) => [result.item.timelineItem, ...current]);
     });
   }
 
@@ -80,7 +118,9 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
       if (!result.ok) {
         setError(result.error);
         setStatus(initialStatus);
+        return;
       }
+      setTimeline((current) => [result.item, ...current]);
     });
   }
 
@@ -96,6 +136,7 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
       }
 
       setNotes((current) => [result.item, ...current]);
+      setTimeline((current) => [result.timelineItem, ...current]);
       setNoteDraft("");
     });
   }
@@ -117,6 +158,7 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
       }
 
       setMovements((current) => [result.item, ...current]);
+      setTimeline((current) => [result.item.timelineItem, ...current]);
       setMovementDraft({
         label: "",
         meta: "Gasto manual - Caja gestoria",
@@ -183,9 +225,80 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
               Riesgo
             </p>
             <p className="mt-3 text-lg font-semibold tracking-tight text-[var(--color-ink)]">
-              Observacion por incompleto
+              {riskLabel}
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
+            Alertas operativas
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Pendientes</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+                {pendingRequirements.length}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Ingresos</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+                {positiveMovements.length}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Egresos</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+                {negativeMovements.length}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {pendingRequirements.length > 0 ? (
+              pendingRequirements.slice(0, 2).map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-2xl border border-[rgba(173,95,71,0.22)] bg-[var(--color-danger-soft)] px-4 py-3"
+                >
+                  <p className="text-sm font-semibold text-[var(--color-ink)]">{item.label}</p>
+                  <p className="mt-1 text-sm text-[var(--color-muted)]">{item.note}</p>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-[rgba(43,111,85,0.22)] bg-[var(--color-success-soft)] px-4 py-3">
+                <p className="text-sm font-semibold text-[var(--color-ink)]">
+                  No hay bloqueos documentales visibles ahora.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          {actionCards.map((item) =>
+            item.external ? (
+              <Link
+                key={item.title}
+                href={item.href}
+                className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5 transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
+              >
+                <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">{item.title}</p>
+                <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">{item.description}</p>
+              </Link>
+            ) : (
+              <a
+                key={item.title}
+                href={item.href}
+                className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5 transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
+              >
+                <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">{item.title}</p>
+                <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">{item.description}</p>
+              </a>
+            ),
+          )}
         </div>
       </section>
 
@@ -216,6 +329,7 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
       <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
         <div className="space-y-6">
           <SectionCard title="Checklist documental" description="Estado real del expediente.">
+            <div id="checklist" />
             <div className="mb-4 flex flex-wrap gap-2">
               {statusOptions.map((option) => (
                 <button
@@ -255,13 +369,18 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
 
           <SectionCard title="Historial y seguimiento" description="Movimientos recientes del tramite.">
             <div className="space-y-4">
-              {detail.timeline.map((event) => (
+              {timeline.map((event, index) => (
                 <div key={event.title} className="flex gap-4">
                   <div className="mt-1 h-3 w-3 rounded-full bg-[var(--color-accent)]" />
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-[var(--color-ink)]">{event.title}</p>
                     <p className="text-sm text-[var(--color-muted)]">{event.description}</p>
                     <p className="font-mono text-xs text-[var(--color-muted)]">{event.date}</p>
+                    {index === 0 ? (
+                      <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-accent)]">
+                        Ultimo movimiento
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -269,6 +388,7 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
           </SectionCard>
 
           <SectionCard title="Caja vinculada" description="Gastos e ingresos relacionados.">
+            <div id="caja" />
             <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_180px_180px]">
               <input
                 value={movementDraft.label}
@@ -334,19 +454,30 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
         <div className="space-y-6">
           <SectionCard title="Acciones sugeridas" description="Acciones rapidas sobre este tramite.">
             <div className="grid gap-3 sm:grid-cols-2">
-              {[
-                "Marcar requisito recibido",
-                "Cargar gasto",
-                "Agregar nota",
-                "Abrir guia",
-              ].map((action) => (
-                <button
-                  key={action}
-                  className="rounded-2xl border border-[var(--color-line)] px-4 py-4 text-left text-sm font-semibold text-[var(--color-ink)] transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
-                >
-                  {action}
-                </button>
-              ))}
+              <a
+                href="#checklist"
+                className="rounded-2xl border border-[var(--color-line)] px-4 py-4 text-left text-sm font-semibold text-[var(--color-ink)] transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
+              >
+                Marcar requisito recibido
+              </a>
+              <a
+                href="#caja"
+                className="rounded-2xl border border-[var(--color-line)] px-4 py-4 text-left text-sm font-semibold text-[var(--color-ink)] transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
+              >
+                Cargar gasto
+              </a>
+              <a
+                href="#notas"
+                className="rounded-2xl border border-[var(--color-line)] px-4 py-4 text-left text-sm font-semibold text-[var(--color-ink)] transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
+              >
+                Agregar nota
+              </a>
+              <Link
+                href="/ayudas"
+                className="rounded-2xl border border-[var(--color-line)] px-4 py-4 text-left text-sm font-semibold text-[var(--color-ink)] transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
+              >
+                Abrir guia
+              </Link>
             </div>
           </SectionCard>
 
@@ -386,7 +517,16 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
                     className="rounded-2xl border border-[var(--color-line)] px-4 py-3"
                   >
                     <p className="text-sm font-semibold text-[var(--color-ink)]">{link.label}</p>
-                    <p className="mt-1 font-mono text-xs text-[var(--color-muted)]">{link.href}</p>
+                    {link.href.startsWith("/") ? (
+                      <Link
+                        href={link.href}
+                        className="mt-1 block font-mono text-xs text-[var(--color-muted)] hover:text-[var(--color-accent)]"
+                      >
+                        {link.href}
+                      </Link>
+                    ) : (
+                      <p className="mt-1 font-mono text-xs text-[var(--color-muted)]">{link.href}</p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -394,6 +534,7 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
           </SectionCard>
 
           <SectionCard title="Notas operativas" description="Criterios internos y observaciones.">
+            <div id="notas" />
             <div className="mb-4 space-y-3">
               <textarea
                 value={noteDraft}

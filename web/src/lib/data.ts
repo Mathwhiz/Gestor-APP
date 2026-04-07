@@ -582,6 +582,13 @@ export async function getDashboardData() {
   const openOperations = operations.filter(
     (operation: (typeof operations)[number]) => operation.status !== "Cerrada",
   );
+  const proceduresMissingDocs = procedures.filter(
+    (procedure: (typeof procedures)[number]) => procedure.status === "Pendiente de documentacion",
+  );
+  const blockedProcedures = procedures.filter(
+    (procedure: (typeof procedures)[number]) => procedure.status === "Observado",
+  );
+  const completedTasks = tasks.filter((task: (typeof tasks)[number]) => "done" in task && task.done);
   const cashBalance = movements.reduce((total: number, movement: (typeof movements)[number]) => {
     const amount = Number(movement.amount.replace(/[^\d-]/g, ""));
     return movement.amount.startsWith("+") ? total + amount : total - Math.abs(amount);
@@ -598,7 +605,10 @@ export async function getDashboardData() {
       {
         title: "Tareas pendientes",
         value: String(pendingTasks.length),
-        detail: "Pendientes cortos para mover hoy y manana.",
+        detail:
+          completedTasks.length > 0
+            ? `${completedTasks.length} completadas y ${pendingTasks.length} todavia activas.`
+            : "Pendientes cortos para mover hoy y manana.",
         accent: "#b57628",
       },
       {
@@ -651,9 +661,10 @@ export async function getDashboardData() {
     ],
     quickStats: {
       urgentProcedures: urgentProcedures.length,
-      observedProcedures: procedures.filter(
-        (procedure: (typeof procedures)[number]) => procedure.status === "Observado",
-      ).length,
+      observedProcedures: blockedProcedures.length,
+      missingDocuments: proceduresMissingDocs.length,
+      pendingTasks: pendingTasks.length,
+      openOperations: openOperations.length,
       pendingCollections,
       cashBalance,
     },
@@ -676,6 +687,23 @@ export async function getProcedureDetailData(id: string): Promise<ProcedureDetai
 
   if (!procedure) return null;
 
+  const matchingGuide = await prisma.guide.findFirst({
+    where: {
+      archivedAt: null,
+      OR: [
+        { title: { equals: procedure.type, mode: "insensitive" } },
+        { title: { contains: procedure.type, mode: "insensitive" } },
+      ],
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  const positiveTotal = procedure.movements
+    .filter((item: (typeof procedure.movements)[number]) => item.amount.startsWith("+"))
+    .reduce((total: number, item: (typeof procedure.movements)[number]) => {
+      return total + Number(item.amount.replace(/[^\d-]/g, ""));
+    }, 0);
+
   return {
     id: procedure.slug,
     title: `${procedure.type} - ${procedure.vehicleLabel}`,
@@ -694,7 +722,7 @@ export async function getProcedureDetailData(id: string): Promise<ProcedureDetai
         tone: mapPriorityTone(procedure.priority),
       },
       { label: "Jurisdiccion", value: procedure.jurisdiction },
-      { label: "Honorarios", value: "$ 0" },
+      { label: "Honorarios", value: `$ ${positiveTotal.toLocaleString("es-AR")}` },
     ],
     requirements: procedure.requirements.map((item: (typeof procedure.requirements)[number]) => ({
       label: item.label,
@@ -712,10 +740,21 @@ export async function getProcedureDetailData(id: string): Promise<ProcedureDetai
       amount: item.amount,
     })),
     guide: {
-      title: procedure.guideTitle ?? "Guia base del tramite",
-      summary: procedure.guideSummary ?? "Sin guia cargada en base de datos.",
-      steps: ["Completar configuracion de este tramite en base real."],
-      links: [],
+      title: matchingGuide?.title ?? procedure.guideTitle ?? "Guia base del tramite",
+      summary:
+        matchingGuide?.summary ??
+        procedure.guideSummary ??
+        "Sin guia cargada en base de datos.",
+      steps:
+        matchingGuide?.highlights.length
+          ? matchingGuide.highlights
+          : ["Completar configuracion de este tramite en base real."],
+      links: [
+        {
+          label: "Abrir centro de ayudas",
+          href: "/ayudas",
+        },
+      ],
     },
     notes: procedure.notes.map((item: (typeof procedure.notes)[number]) => item.body),
   };

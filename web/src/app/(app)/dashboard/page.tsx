@@ -28,6 +28,7 @@ export default async function DashboardPage() {
         title="Dashboard operativo"
         description="Lectura central de gestoria, agencia y caja con datos reales cargados en la base."
         actionLabel="Nuevo tramite"
+        actionHref={canEditRole(profile.role) ? "/tramites?create=1" : undefined}
         actionDisabled={!canEditRole(profile.role)}
       />
 
@@ -47,6 +48,7 @@ export default async function DashboardPage() {
             <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3 lg:grid-cols-1">
               {[
                 ["Observados", String(quickStats.observedProcedures)],
+                ["Docs pendientes", String(quickStats.missingDocuments)],
                 ["Caja actual", `$ ${Math.abs(quickStats.cashBalance).toLocaleString("es-AR")}`],
                 ["Cobros cargados", `$ ${quickStats.pendingCollections.toLocaleString("es-AR")}`],
               ].map(([label, value]) => (
@@ -149,9 +151,10 @@ export default async function DashboardPage() {
         <SectionCard title="Ayudas frecuentes" description="Guias rapidas para no salir del flujo.">
           <div className="space-y-3">
             {guides.map((guide: GuideItem) => (
-              <div
+              <a
                 key={guide.id}
-                className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 py-4"
+                href="/ayudas"
+                className="block rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 py-4 transition hover:border-[var(--color-accent)]/40 hover:bg-white"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -163,7 +166,7 @@ export default async function DashboardPage() {
                 <p className="mt-3 text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">
                   {guide.jurisdiction}
                 </p>
-              </div>
+              </a>
             ))}
           </div>
         </SectionCard>

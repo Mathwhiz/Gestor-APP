@@ -67,6 +67,17 @@ function isValidPlate(value: string) {
   return /^[A-Z0-9-]{6,8}$/.test(normalized);
 }
 
+function getBuenosAiresDateTimeLabel() {
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Argentina/Buenos_Aires",
+  }).format(new Date());
+}
+
 async function resolveContactIdByName(name: string) {
   const normalized = normalizeLookup(name);
   if (!normalized) return null;
@@ -765,15 +776,46 @@ export async function updateProcedureStatusAction(input: {
   } as const;
 
   const prisma = getPrismaClient();
+  const current = await prisma.procedure.findUnique({
+    where: { slug: input.id },
+    select: {
+      id: true,
+      status: true,
+      type: true,
+      clientName: true,
+    },
+  });
+
+  if (!current) {
+    return { ok: false as const, error: "No se encontro el tramite." };
+  }
+
+  const nextStatus = statusMap[input.status as keyof typeof statusMap] ?? "BORRADOR";
+
+  const timelineItem = {
+    title: "Cambio de estado",
+    description: `Paso de ${formatLabel(current.status)} a ${formatLabel(nextStatus)} en ${current.type} de ${current.clientName}.`,
+    date: getBuenosAiresDateTimeLabel(),
+  };
+
   await prisma.procedure.update({
     where: { slug: input.id },
-    data: { status: statusMap[input.status as keyof typeof statusMap] ?? "BORRADOR" },
+    data: {
+      status: nextStatus,
+      timeline: {
+        create: {
+          title: timelineItem.title,
+          description: timelineItem.description,
+          dateLabel: timelineItem.date,
+        },
+      },
+    },
   });
 
   revalidatePath("/tramites");
   revalidatePath(`/tramites/${input.id}`);
 
-  return { ok: true as const };
+  return { ok: true as const, item: timelineItem };
 }
 
 export async function addProcedureNoteAction(input: {
@@ -787,20 +829,41 @@ export async function addProcedureNoteAction(input: {
   }
 
   const prisma = getPrismaClient();
-  await prisma.procedureNote.create({
+  const procedure = await prisma.procedure.findUnique({
+    where: { slug: input.id },
+    select: { id: true },
+  });
+
+  if (!procedure) {
+    return { ok: false as const, error: "No se encontro el tramite." };
+  }
+
+  const timelineItem = {
+    title: "Nota operativa",
+    description: input.note.trim(),
+    date: getBuenosAiresDateTimeLabel(),
+  };
+
+  await prisma.procedure.update({
+    where: { id: procedure.id },
     data: {
-      procedureId: (
-        await prisma.procedure.findUniqueOrThrow({
-          where: { slug: input.id },
-          select: { id: true },
-        })
-      ).id,
-      body: input.note.trim(),
+      notes: {
+        create: {
+          body: input.note.trim(),
+        },
+      },
+      timeline: {
+        create: {
+          title: timelineItem.title,
+          description: timelineItem.description,
+          dateLabel: timelineItem.date,
+        },
+      },
     },
   });
 
   revalidatePath(`/tramites/${input.id}`);
-  return { ok: true as const, item: input.note.trim() };
+  return { ok: true as const, item: input.note.trim(), timelineItem };
 }
 
 export async function toggleProcedureRequirementAction(input: {
@@ -833,12 +896,28 @@ export async function toggleProcedureRequirementAction(input: {
     data: { done: !requirement.done },
   });
 
+  const timelineItem = {
+    title: updated.done ? "Requisito recibido" : "Requisito reabierto",
+    description: `${input.label}: ${updated.done ? "marcado como recibido" : "vuelve a pendiente"}.`,
+    date: getBuenosAiresDateTimeLabel(),
+  };
+
+  await prisma.procedureTimeline.create({
+    data: {
+      procedureId: procedure.id,
+      title: timelineItem.title,
+      description: timelineItem.description,
+      dateLabel: timelineItem.date,
+    },
+  });
+
   revalidatePath(`/tramites/${input.id}`);
   return {
     ok: true as const,
     item: {
       label: input.label,
       done: updated.done,
+      timelineItem,
     },
   };
 }
@@ -884,6 +963,21 @@ export async function addProcedureMovementAction(input: {
     },
   });
 
+  const timelineItem = {
+    title: type === "INGRESO" ? "Ingreso vinculado" : "Egreso vinculado",
+    description: `${movement.label} por ${movement.amount} en ${movement.meta}.`,
+    date: getBuenosAiresDateTimeLabel(),
+  };
+
+  await prisma.procedureTimeline.create({
+    data: {
+      procedureId: procedure.id,
+      title: timelineItem.title,
+      description: timelineItem.description,
+      dateLabel: timelineItem.date,
+    },
+  });
+
   revalidatePath(`/tramites/${input.id}`);
   return {
     ok: true as const,
@@ -891,6 +985,7 @@ export async function addProcedureMovementAction(input: {
       label: movement.label,
       meta: movement.meta,
       amount: movement.amount,
+      timelineItem,
     },
   };
 }

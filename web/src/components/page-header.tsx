@@ -1,8 +1,11 @@
+import Link from "next/link";
+
 type PageHeaderProps = {
   eyebrow: string;
   title: string;
   description: string;
   actionLabel?: string;
+  actionHref?: string;
   actionDisabled?: boolean;
 };
 
@@ -11,6 +14,7 @@ export function PageHeader({
   title,
   description,
   actionLabel,
+  actionHref,
   actionDisabled = false,
 }: PageHeaderProps) {
   return (
@@ -26,12 +30,21 @@ export function PageHeader({
       </div>
 
       {actionLabel ? (
-        <button
-          className="w-full rounded-2xl bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
-          disabled={actionDisabled}
-        >
-          {actionLabel}
-        </button>
+        actionHref && !actionDisabled ? (
+          <Link
+            href={actionHref}
+            className="w-full rounded-2xl bg-[var(--color-accent)] px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] sm:w-auto"
+          >
+            {actionLabel}
+          </Link>
+        ) : (
+          <button
+            className="w-full rounded-2xl bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
+            disabled={actionDisabled}
+          >
+            {actionLabel}
+          </button>
+        )
       ) : null}
     </section>
   );
