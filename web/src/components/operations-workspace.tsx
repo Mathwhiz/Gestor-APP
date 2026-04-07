@@ -104,8 +104,12 @@ export function OperationsWorkspace({
   );
 
   const openMargin = filtered
-    .filter((item) => item.status !== "Cerrada")
-    .reduce((total, item) => total + Number(item.margin.replace(/[^\d-]/g, "")), 0);
+    .filter((item: (typeof filtered)[number]) => item.status !== "Cerrada")
+    .reduce(
+      (total: number, item: (typeof filtered)[number]) =>
+        total + Number(item.margin.replace(/[^\d-]/g, "")),
+      0,
+    );
 
   function addOperation() {
     if (!canEdit || !draft.vehicle.trim()) return;

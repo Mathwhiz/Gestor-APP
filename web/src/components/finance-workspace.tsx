@@ -56,7 +56,7 @@ export function FinanceWorkspace({
     [activeFilter, items, search],
   );
 
-  const balance = filtered.reduce((total, item) => {
+  const balance = filtered.reduce((total: number, item: (typeof filtered)[number]) => {
     const numeric = Number(item.amount.replace(/[^\d-]/g, ""));
     return item.amount.startsWith("+") ? total + numeric : total - Math.abs(numeric);
   }, 0);

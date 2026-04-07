@@ -574,11 +574,15 @@ export async function getDashboardData() {
   const pendingTasks = tasks.filter((task: (typeof tasks)[number]) => !("done" in task) || !task.done);
   const pendingCollections = movements
     .filter((movement: (typeof movements)[number]) => movement.amount.startsWith("+"))
-    .reduce((total, movement: (typeof movements)[number]) => total + Number(movement.amount.replace(/[^\d-]/g, "")), 0);
+    .reduce(
+      (total: number, movement: (typeof movements)[number]) =>
+        total + Number(movement.amount.replace(/[^\d-]/g, "")),
+      0,
+    );
   const openOperations = operations.filter(
     (operation: (typeof operations)[number]) => operation.status !== "Cerrada",
   );
-  const cashBalance = movements.reduce((total, movement: (typeof movements)[number]) => {
+  const cashBalance = movements.reduce((total: number, movement: (typeof movements)[number]) => {
     const amount = Number(movement.amount.replace(/[^\d-]/g, ""));
     return movement.amount.startsWith("+") ? total + amount : total - Math.abs(amount);
   }, 0);
