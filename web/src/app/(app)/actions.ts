@@ -29,6 +29,44 @@ function isSignedAmount(value: string) {
   return trimmed.startsWith("+") || trimmed.startsWith("-");
 }
 
+function hasDigits(value: string) {
+  return /\d/.test(value);
+}
+
+function isValidCurrencyInput(value: string, { signed = false }: { signed?: boolean } = {}) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (signed && !isSignedAmount(trimmed)) return false;
+  return hasDigits(trimmed);
+}
+
+function isValidDateLabel(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/.test(trimmed);
+}
+
+function isValidPhone(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  return /^[\d\s()+-]{6,}$/.test(trimmed) && hasDigits(trimmed);
+}
+
+function isValidDocument(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  return /^[A-Za-z0-9./-]{6,20}$/.test(trimmed);
+}
+
+function normalizePlate(value: string) {
+  return value.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+function isValidPlate(value: string) {
+  const normalized = normalizePlate(value);
+  return /^[A-Z0-9-]{6,8}$/.test(normalized);
+}
+
 async function resolveContactIdByName(name: string) {
   const normalized = normalizeLookup(name);
   if (!normalized) return null;
@@ -74,6 +112,12 @@ export async function createContactAction(input: {
 
   if (!input.name.trim()) {
     return { ok: false as const, error: "El nombre es obligatorio." };
+  }
+  if (!isValidDocument(input.document)) {
+    return { ok: false as const, error: "El documento tiene un formato invalido." };
+  }
+  if (!isValidPhone(input.phone)) {
+    return { ok: false as const, error: "El telefono tiene un formato invalido." };
   }
 
   const prisma = getPrismaClient();
@@ -124,6 +168,12 @@ export async function updateContactAction(input: {
   if (!canEditRole(profile.role)) return forbiddenResult();
   if (!input.name.trim()) {
     return { ok: false as const, error: "El nombre es obligatorio." };
+  }
+  if (!isValidDocument(input.document)) {
+    return { ok: false as const, error: "El documento tiene un formato invalido." };
+  }
+  if (!isValidPhone(input.phone)) {
+    return { ok: false as const, error: "El telefono tiene un formato invalido." };
   }
 
   const prisma = getPrismaClient();
@@ -209,6 +259,9 @@ export async function createFinancialMovementAction(input: {
   if (!isSignedAmount(amount)) {
     return { ok: false as const, error: "El importe debe empezar con + o -." };
   }
+  if (!isValidCurrencyInput(amount, { signed: true })) {
+    return { ok: false as const, error: "El importe debe incluir un valor numerico." };
+  }
   const type = amount.startsWith("-") ? "EGRESO" : "INGRESO";
   const areaMap = {
     Gestoria: "GESTORIA",
@@ -270,6 +323,9 @@ export async function updateFinancialMovementAction(input: {
   if (!isSignedAmount(amount)) {
     return { ok: false as const, error: "El importe debe empezar con + o -." };
   }
+  if (!isValidCurrencyInput(amount, { signed: true })) {
+    return { ok: false as const, error: "El importe debe incluir un valor numerico." };
+  }
   const type = amount.startsWith("-") ? "EGRESO" : "INGRESO";
   const areaMap = {
     Gestoria: "GESTORIA",
@@ -318,6 +374,9 @@ export async function createTaskAction(input: {
 
   if (!input.title.trim()) {
     return { ok: false as const, error: "El titulo es obligatorio." };
+  }
+  if (!input.assignee.trim()) {
+    return { ok: false as const, error: "El responsable es obligatorio." };
   }
 
   const prisma = getPrismaClient();
@@ -399,6 +458,9 @@ export async function updateTaskAction(input: {
   if (!canEditRole(profile.role)) return forbiddenResult();
   if (!input.title.trim()) {
     return { ok: false as const, error: "El titulo es obligatorio." };
+  }
+  if (!input.assignee.trim()) {
+    return { ok: false as const, error: "El responsable es obligatorio." };
   }
 
   const prisma = getPrismaClient();
@@ -605,6 +667,12 @@ export async function createProcedureAction(input: {
   if (!input.client.trim() || !input.vehicle.trim()) {
     return { ok: false as const, error: "Cliente y vehiculo son obligatorios." };
   }
+  if (!input.type.trim()) {
+    return { ok: false as const, error: "El tipo de tramite es obligatorio." };
+  }
+  if (!isValidDateLabel(input.targetDate)) {
+    return { ok: false as const, error: "La fecha objetivo debe tener formato DD/MM/AAAA." };
+  }
 
   const prisma = getPrismaClient();
   const priorityMap = {
@@ -798,6 +866,9 @@ export async function addProcedureMovementAction(input: {
   }
 
   const amount = input.amount.trim() || "- $ 0";
+  if (!isSignedAmount(amount) || !isValidCurrencyInput(amount, { signed: true })) {
+    return { ok: false as const, error: "El importe debe empezar con + o - y tener valor numerico." };
+  }
   const meta = input.meta.trim() || "Gasto manual - Caja gestoria";
   const type = amount.startsWith("+") ? "INGRESO" : "EGRESO";
   const area = /agencia/i.test(meta) ? "AGENCIA" : /personal/i.test(meta) ? "PERSONAL" : /general/i.test(meta) ? "GENERAL" : "GESTORIA";
@@ -840,6 +911,30 @@ export async function createOperationAction(input: {
   if (!canEditRole(profile.role)) return forbiddenResult();
   if (!input.vehicle.trim()) {
     return { ok: false as const, error: "El vehiculo es obligatorio." };
+  }
+  if (!isValidDateLabel(input.date)) {
+    return { ok: false as const, error: "La fecha debe tener formato DD/MM/AAAA." };
+  }
+  if (!isValidCurrencyInput(input.agreedPrice)) {
+    return { ok: false as const, error: "El precio pactado debe incluir un valor numerico." };
+  }
+  if (!isValidCurrencyInput(input.realCost)) {
+    return { ok: false as const, error: "El costo real debe incluir un valor numerico." };
+  }
+  if (!isValidCurrencyInput(input.margin)) {
+    return { ok: false as const, error: "El margen debe incluir un valor numerico." };
+  }
+  if (input.commission.trim() && !isValidCurrencyInput(input.commission)) {
+    return { ok: false as const, error: "La comision debe incluir un valor numerico." };
+  }
+  if (input.type === "Venta" && !input.buyer.trim()) {
+    return { ok: false as const, error: "La venta necesita comprador." };
+  }
+  if (input.type === "Compra" && !input.seller.trim()) {
+    return { ok: false as const, error: "La compra necesita vendedor." };
+  }
+  if (input.type === "Reserva" && !input.buyer.trim()) {
+    return { ok: false as const, error: "La reserva necesita comprador." };
   }
 
   const prisma = getPrismaClient();
@@ -912,6 +1007,30 @@ export async function updateOperationAction(input: {
   if (!canEditRole(profile.role)) return forbiddenResult();
   if (!input.vehicle.trim()) {
     return { ok: false as const, error: "El vehiculo es obligatorio." };
+  }
+  if (!isValidDateLabel(input.date)) {
+    return { ok: false as const, error: "La fecha debe tener formato DD/MM/AAAA." };
+  }
+  if (!isValidCurrencyInput(input.agreedPrice)) {
+    return { ok: false as const, error: "El precio pactado debe incluir un valor numerico." };
+  }
+  if (!isValidCurrencyInput(input.realCost)) {
+    return { ok: false as const, error: "El costo real debe incluir un valor numerico." };
+  }
+  if (!isValidCurrencyInput(input.margin)) {
+    return { ok: false as const, error: "El margen debe incluir un valor numerico." };
+  }
+  if (input.commission.trim() && !isValidCurrencyInput(input.commission)) {
+    return { ok: false as const, error: "La comision debe incluir un valor numerico." };
+  }
+  if (input.type === "Venta" && !input.buyer.trim()) {
+    return { ok: false as const, error: "La venta necesita comprador." };
+  }
+  if (input.type === "Compra" && !input.seller.trim()) {
+    return { ok: false as const, error: "La compra necesita vendedor." };
+  }
+  if (input.type === "Reserva" && !input.buyer.trim()) {
+    return { ok: false as const, error: "La reserva necesita comprador." };
   }
 
   const prisma = getPrismaClient();
@@ -991,6 +1110,9 @@ export async function createVehicleAction(input: {
   if (!input.plate.trim() || !input.name.trim()) {
     return { ok: false as const, error: "Dominio y nombre son obligatorios." };
   }
+  if (!isValidPlate(input.plate)) {
+    return { ok: false as const, error: "El dominio debe tener entre 6 y 8 caracteres validos." };
+  }
 
   const prisma = getPrismaClient();
   const areaMap = {
@@ -1005,7 +1127,7 @@ export async function createVehicleAction(input: {
 
   const vehicle = await prisma.vehicle.create({
     data: {
-      plate: input.plate.trim().toUpperCase(),
+      plate: normalizePlate(input.plate),
       name: input.name.trim(),
       owner: input.owner.trim() || "Sin titular",
       area: areaMap[input.area as keyof typeof areaMap] ?? "GESTORIA",
@@ -1050,6 +1172,9 @@ export async function updateVehicleAction(input: {
   if (!input.plate.trim() || !input.name.trim()) {
     return { ok: false as const, error: "Dominio y nombre son obligatorios." };
   }
+  if (!isValidPlate(input.plate)) {
+    return { ok: false as const, error: "El dominio debe tener entre 6 y 8 caracteres validos." };
+  }
 
   const prisma = getPrismaClient();
   const areaMap = {
@@ -1065,7 +1190,7 @@ export async function updateVehicleAction(input: {
   const vehicle = await prisma.vehicle.update({
     where: { id: input.id },
     data: {
-      plate: input.plate.trim().toUpperCase(),
+      plate: normalizePlate(input.plate),
       name: input.name.trim(),
       owner: input.owner.trim() || "Sin titular",
       area: areaMap[input.area as keyof typeof areaMap] ?? "GESTORIA",

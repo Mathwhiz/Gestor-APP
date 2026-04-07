@@ -10,6 +10,7 @@ import {
   toggleVehicleArchivedAction,
   updateVehicleAction,
 } from "@/app/(app)/actions";
+import { confirmDiscardChanges, useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 
 type VehicleItem = (typeof mockVehicles)[number] & {
   archived?: boolean;
@@ -44,7 +45,9 @@ export function VehiclesWorkspace({
     status: "En tramite",
     note: "",
   });
+  const [editingInitial, setEditingInitial] = useState<string>("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(
@@ -66,11 +69,25 @@ export function VehiclesWorkspace({
       }),
     [activeFilter, items, search],
   );
+  const hasDraftChanges = Boolean(
+    draft.plate.trim() ||
+      draft.name.trim() ||
+      draft.owner.trim() ||
+      draft.area !== "Gestoria" ||
+      draft.status !== "En tramite" ||
+      draft.note.trim(),
+  );
+  const hasEditChanges =
+    editingId !== null &&
+    JSON.stringify(editingDraft) !== editingInitial;
+
+  useUnsavedChanges(hasDraftChanges || hasEditChanges);
 
   function addVehicle() {
     if (!canEdit || !draft.plate.trim() || !draft.name.trim()) return;
 
     setError("");
+    setSuccess("");
     startTransition(async () => {
       const result = await createVehicleAction(draft);
       if (!result.ok) {
@@ -87,25 +104,31 @@ export function VehiclesWorkspace({
         status: "En tramite",
         note: "",
       });
+      setSuccess("Vehiculo cargado.");
     });
   }
 
   function startEditing(vehicle: VehicleItem) {
+    setError("");
+    setSuccess("");
     setEditingId(vehicle.id);
-    setEditingDraft({
+    const nextDraft = {
       plate: vehicle.plate,
       name: vehicle.name,
       owner: vehicle.owner,
       area: vehicle.area,
       status: vehicle.status,
       note: vehicle.note === "Sin observaciones" ? "" : vehicle.note,
-    });
+    };
+    setEditingDraft(nextDraft);
+    setEditingInitial(JSON.stringify(nextDraft));
   }
 
   function saveEdit() {
     if (!canEdit || !editingId) return;
 
     setError("");
+    setSuccess("");
     startTransition(async () => {
       const result = await updateVehicleAction({
         id: editingId,
@@ -120,6 +143,8 @@ export function VehiclesWorkspace({
         current.map((vehicle) => (vehicle.id === editingId ? result.item : vehicle)),
       );
       setEditingId(null);
+      setEditingInitial("");
+      setSuccess("Vehiculo actualizado.");
     });
   }
 
@@ -127,6 +152,7 @@ export function VehiclesWorkspace({
     if (!canEdit) return;
 
     setError("");
+    setSuccess("");
     startTransition(async () => {
       const result = await toggleVehicleArchivedAction({
         id: vehicle.id,
@@ -143,7 +169,30 @@ export function VehiclesWorkspace({
         ),
       );
       setEditingId(null);
+      setSuccess(vehicle.archived ? "Vehiculo reactivado." : "Vehiculo archivado.");
     });
+  }
+
+  function resetDraft() {
+    if (!confirmDiscardChanges(hasDraftChanges)) return;
+    setDraft({
+      plate: "",
+      name: "",
+      owner: "",
+      area: "Gestoria",
+      status: "En tramite",
+      note: "",
+    });
+    setError("");
+    setSuccess("");
+  }
+
+  function cancelEdit() {
+    if (!confirmDiscardChanges(hasEditChanges)) return;
+    setEditingId(null);
+    setEditingInitial("");
+    setError("");
+    setSuccess("");
   }
 
   return (
@@ -190,7 +239,10 @@ export function VehiclesWorkspace({
 
       <section className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
         <div className="flex items-center justify-between gap-4">
-          <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de vehiculo</p>
+          <div>
+            <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de vehiculo</p>
+            {hasDraftChanges ? <p className="mt-1 text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en el alta.</p> : null}
+          </div>
           {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -208,10 +260,16 @@ export function VehiclesWorkspace({
           </select>
         </div>
         <textarea value={draft.note} onChange={(event) => setDraft((current) => ({ ...current, note: event.target.value }))} className="mt-3 min-h-24 w-full rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Nota operativa" disabled={!canEdit || isPending} />
-        <button onClick={addVehicle} disabled={!canEdit || isPending} className="mt-3 h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
+        <div className="mt-3 flex gap-3">
+        <button onClick={addVehicle} disabled={!canEdit || isPending || !draft.plate.trim() || !draft.name.trim()} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
           {isPending ? "Guardando..." : "Agregar"}
         </button>
+        <button onClick={resetDraft} disabled={!canEdit || isPending} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
+          Limpiar
+        </button>
+        </div>
         {error ? <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p> : null}
+        {success ? <p className="mt-3 text-sm text-[var(--color-success)]">{success}</p> : null}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
@@ -222,6 +280,7 @@ export function VehiclesWorkspace({
             <article key={vehicle.id} className={`rounded-[28px] border px-5 py-5 ${vehicle.archived ? "border-[var(--color-line)] bg-[var(--color-panel-soft)] opacity-80" : "border-[var(--color-line)] bg-white"}`}>
               {isEditing ? (
                 <div className="space-y-3">
+                  {hasEditChanges ? <p className="text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en esta edicion.</p> : null}
                   <input value={editingDraft.plate} onChange={(event) => setEditingDraft((current) => ({ ...current, plate: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" />
                   <input value={editingDraft.name} onChange={(event) => setEditingDraft((current) => ({ ...current, name: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" />
                   <input value={editingDraft.owner} onChange={(event) => setEditingDraft((current) => ({ ...current, owner: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" />
@@ -238,8 +297,8 @@ export function VehiclesWorkspace({
                   </div>
                   <textarea value={editingDraft.note} onChange={(event) => setEditingDraft((current) => ({ ...current, note: event.target.value }))} className="min-h-24 w-full rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Nota operativa" />
                   <div className="flex gap-3">
-                    <button onClick={saveEdit} disabled={isPending} className="rounded-2xl bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-45">Guardar</button>
-                    <button onClick={() => setEditingId(null)} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)]">Cancelar</button>
+                    <button onClick={saveEdit} disabled={isPending || !editingDraft.plate.trim() || !editingDraft.name.trim()} className="rounded-2xl bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-45">Guardar</button>
+                    <button onClick={cancelEdit} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)]">Cancelar</button>
                   </div>
                 </div>
               ) : (

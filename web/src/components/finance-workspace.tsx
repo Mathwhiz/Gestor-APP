@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { movements as mockMovements } from "@/data/mock-data";
 import { createFinancialMovementAction, updateFinancialMovementAction } from "@/app/(app)/actions";
+import { confirmDiscardChanges, useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 
 type MovementItem = (typeof mockMovements)[number];
 
@@ -34,6 +35,7 @@ export function FinanceWorkspace({
     account: "",
     amount: "",
   });
+  const [editingInitial, setEditingInitial] = useState<string>("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -55,6 +57,18 @@ export function FinanceWorkspace({
       }),
     [activeFilter, items, search],
   );
+  const hasDraftChanges = Boolean(
+    draft.description.trim() ||
+      draft.category !== "Otros ingresos" ||
+      draft.area !== "Gestoria" ||
+      draft.account !== "Caja gestoria" ||
+      draft.amount !== "+ $ 0",
+  );
+  const hasEditChanges =
+    editingId !== null &&
+    JSON.stringify(editingDraft) !== editingInitial;
+
+  useUnsavedChanges(hasDraftChanges || hasEditChanges);
 
   const balance = filtered.reduce((total: number, item: (typeof filtered)[number]) => {
     const numeric = Number(item.amount.replace(/[^\d-]/g, ""));
@@ -104,8 +118,30 @@ export function FinanceWorkspace({
         current.map((movement) => (movement.id === editingId ? result.item : movement)),
       );
       setEditingId(null);
+      setEditingInitial("");
       setSuccess("Movimiento actualizado.");
     });
+  }
+
+  function resetDraft() {
+    if (!confirmDiscardChanges(hasDraftChanges)) return;
+    setDraft({
+      description: "",
+      category: "Otros ingresos",
+      area: "Gestoria",
+      account: "Caja gestoria",
+      amount: "+ $ 0",
+    });
+    setError("");
+    setSuccess("");
+  }
+
+  function cancelEdit() {
+    if (!confirmDiscardChanges(hasEditChanges)) return;
+    setEditingId(null);
+    setEditingInitial("");
+    setError("");
+    setSuccess("");
   }
 
   return (
@@ -163,7 +199,10 @@ export function FinanceWorkspace({
 
       <section className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
         <div className="flex items-center justify-between gap-4">
-          <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Carga rapida de movimiento</p>
+          <div>
+            <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Carga rapida de movimiento</p>
+            {hasDraftChanges ? <p className="mt-1 text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en el alta.</p> : null}
+          </div>
           {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -182,16 +221,80 @@ export function FinanceWorkspace({
             <option>Personal</option>
           </select>
           <input value={draft.amount} onChange={(event) => setDraft((c) => ({ ...c, amount: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="+ $ 0" disabled={!canEdit || isPending} />
-          <button onClick={addMovement} disabled={!canEdit || isPending} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
+          <button onClick={addMovement} disabled={!canEdit || isPending || !draft.description.trim()} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
             {isPending ? "Guardando..." : "Agregar"}
+          </button>
+          <button onClick={resetDraft} disabled={!canEdit || isPending} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
+            Limpiar
           </button>
         </div>
         {error ? <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p> : null}
         {success ? <p className="mt-3 text-sm text-[var(--color-success)]">{success}</p> : null}
       </section>
 
-      <section className="overflow-hidden rounded-[28px] border border-[var(--color-line)] bg-white">
-        <table className="min-w-full divide-y divide-[var(--color-line)] text-left">
+      <section className="rounded-[28px] border border-[var(--color-line)] bg-white">
+        <div className="grid gap-3 p-4 sm:hidden">
+          {filtered.map((movement) => {
+            const isEditing = editingId === movement.id;
+
+            return (
+              <article key={movement.id} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 py-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-muted)]">{movement.date}</p>
+                {isEditing ? (
+                  <div className="mt-3 space-y-3">
+                    <input value={editingDraft.description} onChange={(event) => setEditingDraft((current) => ({ ...current, description: event.target.value }))} className="h-10 w-full rounded-xl border border-[var(--color-line)] bg-white px-3 text-sm outline-none focus:border-[var(--color-accent)]" />
+                    <input value={editingDraft.category} onChange={(event) => setEditingDraft((current) => ({ ...current, category: event.target.value }))} className="h-10 w-full rounded-xl border border-[var(--color-line)] bg-white px-3 text-sm outline-none focus:border-[var(--color-accent)]" />
+                    <select value={editingDraft.area} onChange={(event) => setEditingDraft((current) => ({ ...current, area: event.target.value }))} className="h-10 w-full rounded-xl border border-[var(--color-line)] bg-white px-3 text-sm outline-none focus:border-[var(--color-accent)]">
+                      <option>Gestoria</option><option>Agencia</option><option>General</option><option>Personal</option>
+                    </select>
+                    <input value={editingDraft.account} onChange={(event) => setEditingDraft((current) => ({ ...current, account: event.target.value }))} className="h-10 w-full rounded-xl border border-[var(--color-line)] bg-white px-3 text-sm outline-none focus:border-[var(--color-accent)]" />
+                    <input value={editingDraft.amount} onChange={(event) => setEditingDraft((current) => ({ ...current, amount: event.target.value }))} className="h-10 w-full rounded-xl border border-[var(--color-line)] bg-white px-3 text-sm outline-none focus:border-[var(--color-accent)]" />
+                    <div className="flex gap-2">
+                      <button onClick={saveEdit} disabled={isPending || !editingDraft.description.trim()} className="rounded-xl bg-[var(--color-accent)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-45">Guardar</button>
+                      <button onClick={cancelEdit} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)]">Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-3 flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--color-ink)]">{movement.description}</p>
+                        <p className="mt-1 text-sm text-[var(--color-muted)]">{movement.category}</p>
+                      </div>
+                      <p className={`text-sm font-semibold ${movement.amount.startsWith("+") ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"}`}>
+                        {movement.amount}
+                      </p>
+                    </div>
+                    <div className="mt-3 grid gap-2 text-sm text-[var(--color-muted)]">
+                      <p>Area: {movement.area}</p>
+                      <p>Cuenta: {movement.account}</p>
+                    </div>
+                    {canEdit ? (
+                      <div className="mt-4">
+                        <button onClick={() => {
+                          setEditingId(movement.id);
+                          const nextDraft = {
+                            description: movement.description,
+                            category: movement.category,
+                            area: movement.area,
+                            account: movement.account,
+                            amount: movement.amount,
+                          };
+                          setEditingDraft(nextDraft);
+                          setEditingInitial(JSON.stringify(nextDraft));
+                        }} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
+                          Editar
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </article>
+            );
+          })}
+        </div>
+        <div className="hidden overflow-x-auto sm:block">
+        <table className="min-w-[860px] divide-y divide-[var(--color-line)] text-left">
           <thead className="bg-[var(--color-panel-soft)] text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
             <tr>
               {["Fecha", "Descripcion", "Categoria", "Area", "Cuenta", "Importe", ""].map((heading) => (
@@ -215,8 +318,8 @@ export function FinanceWorkspace({
                       <td className="px-5 py-4"><input value={editingDraft.amount} onChange={(event) => setEditingDraft((current) => ({ ...current, amount: event.target.value }))} className="h-10 w-full rounded-xl border border-[var(--color-line)] px-3 text-sm outline-none focus:border-[var(--color-accent)]" /></td>
                       <td className="px-5 py-4">
                         <div className="flex gap-2">
-                          <button onClick={saveEdit} disabled={isPending} className="rounded-xl bg-[var(--color-accent)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-45">Guardar</button>
-                          <button onClick={() => setEditingId(null)} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)]">Cancelar</button>
+                          <button onClick={saveEdit} disabled={isPending || !editingDraft.description.trim()} className="rounded-xl bg-[var(--color-accent)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-45">Guardar</button>
+                          <button onClick={cancelEdit} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)]">Cancelar</button>
                         </div>
                       </td>
                     </>
@@ -231,13 +334,15 @@ export function FinanceWorkspace({
                         {canEdit ? (
                           <button onClick={() => {
                             setEditingId(movement.id);
-                            setEditingDraft({
+                            const nextDraft = {
                               description: movement.description,
                               category: movement.category,
                               area: movement.area,
                               account: movement.account,
                               amount: movement.amount,
-                            });
+                            };
+                            setEditingDraft(nextDraft);
+                            setEditingInitial(JSON.stringify(nextDraft));
                           }} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
                             Editar
                           </button>
@@ -250,6 +355,7 @@ export function FinanceWorkspace({
             })}
           </tbody>
         </table>
+        </div>
       </section>
     </div>
   );

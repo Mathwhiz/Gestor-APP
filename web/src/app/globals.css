@@ -38,6 +38,19 @@ body {
   font-family: "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
 }
 
+@media (max-width: 640px) {
+  html {
+    font-size: 15px;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px;
+  }
+}
+
 a,
 button,
 input {

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { procedures as mockProcedures } from "@/data/mock-data";
 import { createProcedureAction } from "@/app/(app)/actions";
+import { confirmDiscardChanges, useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 
 type ProcedureItem = {
   id: string;
@@ -76,6 +77,16 @@ export function ProceduresWorkspace({
       }),
     [activeFilter, items, search],
   );
+  const hasDraftChanges = Boolean(
+    draft.type !== "Transferencia" ||
+      draft.client.trim() ||
+      draft.vehicle.trim() ||
+      draft.jurisdiction !== "La Pampa" ||
+      draft.priority !== "Media" ||
+      draft.targetDate !== "15/04/2026",
+  );
+
+  useUnsavedChanges(showForm && hasDraftChanges);
 
   function addProcedure() {
     if (!canEdit || !draft.client.trim() || !draft.vehicle.trim()) return;
@@ -101,6 +112,20 @@ export function ProceduresWorkspace({
       setShowForm(false);
       setSuccess("Tramite creado correctamente.");
     });
+  }
+
+  function resetDraft() {
+    if (!confirmDiscardChanges(hasDraftChanges)) return;
+    setDraft({
+      type: "Transferencia",
+      client: "",
+      vehicle: "",
+      jurisdiction: "La Pampa",
+      priority: "Media",
+      targetDate: "15/04/2026",
+    });
+    setError("");
+    setSuccess("");
   }
 
   return (
@@ -163,9 +188,17 @@ export function ProceduresWorkspace({
             <p className="mt-1 text-sm text-[var(--color-muted)]">
               Alta real sobre la base operativa para arrancar el seguimiento.
             </p>
+            {showForm && hasDraftChanges ? (
+              <p className="mt-1 text-sm text-[var(--color-warning,#b57628)]">
+                Tenes cambios sin guardar en el alta.
+              </p>
+            ) : null}
           </div>
           <button
-            onClick={() => setShowForm((current) => !current)}
+            onClick={() => {
+              if (showForm && !confirmDiscardChanges(hasDraftChanges)) return;
+              setShowForm((current) => !current);
+            }}
             disabled={!canEdit}
             className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45"
           >
@@ -239,10 +272,32 @@ export function ProceduresWorkspace({
             </select>
             <button
               onClick={addProcedure}
-              disabled={isPending}
+              disabled={isPending || !draft.client.trim() || !draft.vehicle.trim()}
               className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:opacity-45"
             >
               {isPending ? "Guardando..." : "Agregar"}
+            </button>
+          </div>
+        ) : null}
+
+        {showForm ? (
+          <div className="mt-3 flex gap-3">
+            <button
+              onClick={resetDraft}
+              disabled={!canEdit || isPending}
+              className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Limpiar
+            </button>
+            <button
+              onClick={() => {
+                resetDraft();
+                setShowForm(false);
+              }}
+              disabled={!canEdit || isPending}
+              className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Cancelar carga
             </button>
           </div>
         ) : null}
@@ -251,8 +306,34 @@ export function ProceduresWorkspace({
         {success ? <p className="mt-3 text-sm text-[var(--color-success)]">{success}</p> : null}
       </section>
 
-      <section className="overflow-hidden rounded-[28px] border border-[var(--color-line)] bg-white">
-        <table className="min-w-full divide-y divide-[var(--color-line)] text-left">
+      <section className="rounded-[28px] border border-[var(--color-line)] bg-white">
+        <div className="grid gap-3 p-4 sm:hidden">
+          {filtered.map((procedure) => (
+            <a
+              key={procedure.id}
+              href={`/tramites/${procedure.id}`}
+              className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 py-4 transition hover:border-[var(--color-accent)]/40 hover:bg-white"
+            >
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--color-ink)]">{procedure.type}</p>
+                    <p className="mt-1 text-sm text-[var(--color-muted)]">{procedure.client}</p>
+                  </div>
+                  <StatusBadge tone={procedure.statusTone}>{procedure.status}</StatusBadge>
+                </div>
+                <div className="grid gap-2 text-sm text-[var(--color-muted)]">
+                  <p>Vehiculo: {procedure.vehicle}</p>
+                  <p>Prioridad: {procedure.priority}</p>
+                  <p>Jurisdiccion: {procedure.jurisdiction}</p>
+                  <p>Objetivo: {procedure.targetDate}</p>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto sm:block">
+        <table className="min-w-[760px] divide-y divide-[var(--color-line)] text-left">
           <thead className="bg-[var(--color-panel-soft)] text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
             <tr>
               {["Tramite", "Cliente", "Vehiculo", "Estado", "Prioridad", "Jurisdiccion", "Objetivo"].map((heading) => (
@@ -282,6 +363,7 @@ export function ProceduresWorkspace({
             ))}
           </tbody>
         </table>
+        </div>
       </section>
     </div>
   );

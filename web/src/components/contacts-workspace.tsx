@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { contacts as mockContacts } from "@/data/mock-data";
+import { confirmDiscardChanges, useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import {
   createContactAction,
   toggleContactArchivedAction,
@@ -49,7 +50,9 @@ export function ContactsWorkspace({
     phone: "",
     location: "",
   });
+  const [editingInitial, setEditingInitial] = useState<string>("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(
@@ -70,11 +73,24 @@ export function ContactsWorkspace({
       }),
     [items, role, search],
   );
+  const hasDraftChanges = Boolean(
+    draft.name.trim() ||
+      draft.document.trim() ||
+      draft.phone.trim() ||
+      draft.location !== "Santa Rosa, La Pampa" ||
+      draft.role !== "Cliente particular",
+  );
+  const hasEditChanges =
+    editingId !== null &&
+    JSON.stringify(editingDraft) !== editingInitial;
+
+  useUnsavedChanges(hasDraftChanges || hasEditChanges);
 
   function addContact() {
     if (!canEdit || !draft.name.trim()) return;
 
     setError("");
+    setSuccess("");
     startTransition(async () => {
       const result = await createContactAction(draft);
       if (!result.ok) {
@@ -90,24 +106,30 @@ export function ContactsWorkspace({
         phone: "",
         location: "Santa Rosa, La Pampa",
       });
+      setSuccess("Contacto cargado.");
     });
   }
 
   function startEditing(contact: ContactItem) {
+    setError("");
+    setSuccess("");
     setEditingId(contact.id);
-    setEditingDraft({
+    const nextDraft = {
       name: contact.name,
       role: contact.role,
       document: contact.document === "Sin documentar" ? "" : contact.document,
       phone: contact.phone === "Sin telefono" ? "" : contact.phone,
       location: contact.location === "Sin localidad" ? "" : contact.location,
-    });
+    };
+    setEditingDraft(nextDraft);
+    setEditingInitial(JSON.stringify(nextDraft));
   }
 
   function saveEdit() {
     if (!canEdit || !editingId) return;
 
     setError("");
+    setSuccess("");
     startTransition(async () => {
       const result = await updateContactAction({
         id: editingId,
@@ -122,6 +144,8 @@ export function ContactsWorkspace({
         current.map((contact) => (contact.id === editingId ? result.item : contact)),
       );
       setEditingId(null);
+      setEditingInitial("");
+      setSuccess("Contacto actualizado.");
     });
   }
 
@@ -129,6 +153,7 @@ export function ContactsWorkspace({
     if (!canEdit) return;
 
     setError("");
+    setSuccess("");
     startTransition(async () => {
       const result = await toggleContactArchivedAction({
         id: contact.id,
@@ -147,7 +172,29 @@ export function ContactsWorkspace({
         ),
       );
       setEditingId(null);
+      setSuccess(contact.archived ? "Contacto reactivado." : "Contacto archivado.");
     });
+  }
+
+  function resetDraft() {
+    if (!confirmDiscardChanges(hasDraftChanges)) return;
+    setDraft({
+      name: "",
+      role: "Cliente particular",
+      document: "",
+      phone: "",
+      location: "Santa Rosa, La Pampa",
+    });
+    setError("");
+    setSuccess("");
+  }
+
+  function cancelEdit() {
+    if (!confirmDiscardChanges(hasEditChanges)) return;
+    setEditingId(null);
+    setEditingInitial("");
+    setError("");
+    setSuccess("");
   }
 
   return (
@@ -211,7 +258,10 @@ export function ContactsWorkspace({
 
       <section className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
         <div className="flex items-center justify-between gap-4">
-          <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de contacto</p>
+          <div>
+            <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de contacto</p>
+            {hasDraftChanges ? <p className="mt-1 text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en el alta.</p> : null}
+          </div>
           {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -231,14 +281,18 @@ export function ContactsWorkspace({
             <option>General Pico, La Pampa</option>
             <option>CABA</option>
           </select>
-          <button onClick={addContact} disabled={!canEdit || isPending} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45 md:col-span-2 xl:col-span-1">
+          <button onClick={addContact} disabled={!canEdit || isPending || !draft.name.trim()} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45 md:col-span-1">
             {isPending ? "Guardando..." : "Agregar"}
+          </button>
+          <button onClick={resetDraft} disabled={!canEdit || isPending} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45 md:col-span-1">
+            Limpiar
           </button>
         </div>
         {error ? <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p> : null}
+        {success ? <p className="mt-3 text-sm text-[var(--color-success)]">{success}</p> : null}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {filtered.map((contact) => {
           const isEditing = editingId === contact.id;
 
@@ -246,6 +300,7 @@ export function ContactsWorkspace({
             <article key={contact.id} className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
               {isEditing ? (
                 <div className="space-y-3">
+                  {hasEditChanges ? <p className="text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en esta edicion.</p> : null}
                   <input value={editingDraft.name} onChange={(event) => setEditingDraft((current) => ({ ...current, name: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" />
                   <select value={editingDraft.role} onChange={(event) => setEditingDraft((current) => ({ ...current, role: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
                     <option>Cliente particular</option>
@@ -258,10 +313,10 @@ export function ContactsWorkspace({
                   <input value={editingDraft.phone} onChange={(event) => setEditingDraft((current) => ({ ...current, phone: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Telefono" />
                   <input value={editingDraft.location} onChange={(event) => setEditingDraft((current) => ({ ...current, location: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Localidad" />
                   <div className="flex gap-3">
-                    <button onClick={saveEdit} disabled={isPending} className="rounded-2xl bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-45">
+                    <button onClick={saveEdit} disabled={isPending || !editingDraft.name.trim()} className="rounded-2xl bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-45">
                       Guardar
                     </button>
-                    <button onClick={() => setEditingId(null)} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)]">
+                    <button onClick={cancelEdit} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)]">
                       Cancelar
                     </button>
                   </div>
@@ -283,26 +338,26 @@ export function ContactsWorkspace({
                     <p>{contact.location}</p>
                   </div>
                   {canEdit ? (
-                    <div className="mt-5 flex gap-3">
+                    <div className="mt-5 flex flex-wrap gap-2">
                       {!contact.archived ? (
                         <>
-                          <Link href={`/contactos/${contact.id}`} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
+                          <Link href={`/contactos/${contact.id}`} className="rounded-2xl border border-[var(--color-line)] px-3 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
                             Abrir ficha
                           </Link>
-                          <Link href={`/tramites?client=${encodeURIComponent(contact.name)}`} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
+                          <Link href={`/tramites?client=${encodeURIComponent(contact.name)}`} className="rounded-2xl border border-[var(--color-line)] px-3 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
                             Nuevo tramite
                           </Link>
-                          <Link href={`/operaciones?buyer=${encodeURIComponent(contact.name)}`} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
+                          <Link href={`/operaciones?buyer=${encodeURIComponent(contact.name)}`} className="rounded-2xl border border-[var(--color-line)] px-3 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
                             Nueva operacion
                           </Link>
                         </>
                       ) : null}
                       {!contact.archived ? (
-                        <button onClick={() => startEditing(contact)} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
+                        <button onClick={() => startEditing(contact)} className="rounded-2xl border border-[var(--color-line)] px-3 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
                           Editar
                         </button>
                       ) : null}
-                      <button onClick={() => toggleArchived(contact)} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
+                      <button onClick={() => toggleArchived(contact)} className="rounded-2xl border border-[var(--color-line)] px-3 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
                         {contact.archived ? "Reactivar" : "Archivar"}
                       </button>
                     </div>

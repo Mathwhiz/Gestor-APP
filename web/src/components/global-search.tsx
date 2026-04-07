@@ -36,9 +36,9 @@ export function GlobalSearch({ items }: { items: SearchItem[] }) {
   }, [items, query]);
 
   return (
-    <div className="relative">
+    <div className="relative w-full sm:w-auto">
       <button
-        className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+        className="w-full rounded-full border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] sm:w-auto"
         onClick={() => setOpen((current) => !current)}
         type="button"
       >
@@ -46,7 +46,7 @@ export function GlobalSearch({ items }: { items: SearchItem[] }) {
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-20 mt-3 w-[min(92vw,28rem)] rounded-[28px] border border-[var(--color-line)] bg-white p-4 shadow-[0_24px_80px_rgba(17,24,39,0.12)]">
+        <div className="absolute left-0 right-0 z-20 mt-3 w-full rounded-[24px] border border-[var(--color-line)] bg-white p-4 shadow-[0_24px_80px_rgba(17,24,39,0.12)] sm:left-auto sm:right-0 sm:w-[min(92vw,28rem)] sm:rounded-[28px]">
           <input
             autoFocus
             className="h-12 w-full rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"

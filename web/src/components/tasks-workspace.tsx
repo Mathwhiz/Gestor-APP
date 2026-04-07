@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { tasks as mockTasks } from "@/data/mock-data";
+import { confirmDiscardChanges, useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import {
   createTaskAction,
   toggleTaskArchivedAction,
@@ -50,7 +51,9 @@ export function TasksWorkspace({
     priority: "Media",
     assignee: "",
   });
+  const [editingInitial, setEditingInitial] = useState<string>("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(
@@ -71,6 +74,18 @@ export function TasksWorkspace({
       }),
     [activeFilter, items, search],
   );
+  const hasDraftChanges = Boolean(
+    draft.title.trim() ||
+      draft.related !== "Tramite general" ||
+      draft.dueLabel !== "Hoy - 18:00" ||
+      draft.priority !== "Media" ||
+      draft.assignee !== "Marcelo",
+  );
+  const hasEditChanges =
+    editingId !== null &&
+    JSON.stringify(editingDraft) !== editingInitial;
+
+  useUnsavedChanges(hasDraftChanges || hasEditChanges);
 
   function toneFromPriority(priority: string, done?: boolean) {
     if (done) return "success" as const;
@@ -83,6 +98,7 @@ export function TasksWorkspace({
     if (!canEdit) return;
 
     setError("");
+    setSuccess("");
     startTransition(async () => {
       const result = await toggleTaskDoneAction(id);
       if (!result.ok) {
@@ -97,6 +113,7 @@ export function TasksWorkspace({
             : task,
         ),
       );
+      setSuccess(result.item.done ? "Tarea completada." : "Tarea reabierta.");
     });
   }
 
@@ -104,6 +121,7 @@ export function TasksWorkspace({
     if (!canEdit || !draft.title.trim()) return;
 
     setError("");
+    setSuccess("");
     startTransition(async () => {
       const result = await createTaskAction(draft);
       if (!result.ok) {
@@ -119,6 +137,7 @@ export function TasksWorkspace({
         priority: "Media",
         assignee: "Marcelo",
       });
+      setSuccess("Tarea creada.");
     });
   }
 
@@ -126,6 +145,7 @@ export function TasksWorkspace({
     if (!canEdit) return;
 
     setError("");
+    setSuccess("");
     startTransition(async () => {
       const result = await toggleTaskArchivedAction({
         id: task.id,
@@ -142,24 +162,30 @@ export function TasksWorkspace({
         ),
       );
       setEditingId(null);
+      setSuccess(task.archived ? "Tarea reactivada." : "Tarea archivada.");
     });
   }
 
   function startEditing(task: TaskItem) {
+    setError("");
+    setSuccess("");
     setEditingId(task.id);
-    setEditingDraft({
+    const nextDraft = {
       title: task.title,
       related: task.related,
       dueLabel: task.dueLabel,
       priority: task.priority,
       assignee: task.assignee,
-    });
+    };
+    setEditingDraft(nextDraft);
+    setEditingInitial(JSON.stringify(nextDraft));
   }
 
   function saveEdit() {
     if (!canEdit || !editingId) return;
 
     setError("");
+    setSuccess("");
     startTransition(async () => {
       const result = await updateTaskAction({
         id: editingId,
@@ -178,7 +204,30 @@ export function TasksWorkspace({
         ),
       );
       setEditingId(null);
+      setEditingInitial("");
+      setSuccess("Tarea actualizada.");
     });
+  }
+
+  function resetDraft() {
+    if (!confirmDiscardChanges(hasDraftChanges)) return;
+    setDraft({
+      title: "",
+      related: "Tramite general",
+      dueLabel: "Hoy - 18:00",
+      priority: "Media",
+      assignee: "Marcelo",
+    });
+    setError("");
+    setSuccess("");
+  }
+
+  function cancelEdit() {
+    if (!confirmDiscardChanges(hasEditChanges)) return;
+    setEditingId(null);
+    setEditingInitial("");
+    setError("");
+    setSuccess("");
   }
 
   return (
@@ -225,7 +274,10 @@ export function TasksWorkspace({
 
       <section className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
         <div className="flex items-center justify-between gap-4">
-          <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de tarea</p>
+          <div>
+            <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de tarea</p>
+            {hasDraftChanges ? <p className="mt-1 text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en el alta.</p> : null}
+          </div>
           {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -237,11 +289,15 @@ export function TasksWorkspace({
             <option>Alta</option>
             <option>Media</option>
           </select>
-          <button onClick={addTask} disabled={!canEdit || isPending} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
+          <button onClick={addTask} disabled={!canEdit || isPending || !draft.title.trim()} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
             {isPending ? "Guardando..." : "Agregar"}
+          </button>
+          <button onClick={resetDraft} disabled={!canEdit || isPending} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
+            Limpiar
           </button>
         </div>
         {error ? <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p> : null}
+        {success ? <p className="mt-3 text-sm text-[var(--color-success)]">{success}</p> : null}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -252,6 +308,7 @@ export function TasksWorkspace({
             <article key={task.id} className={`rounded-[28px] border px-5 py-5 ${task.archived ? "border-[var(--color-line)] bg-[var(--color-panel-soft)] opacity-80" : task.done ? "border-[var(--color-success)]/25 bg-[var(--color-success-soft)]" : "border-[var(--color-line)] bg-white"}`}>
               {isEditing ? (
                 <div className="space-y-3">
+                  {hasEditChanges ? <p className="text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en esta edicion.</p> : null}
                   <input value={editingDraft.title} onChange={(event) => setEditingDraft((current) => ({ ...current, title: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" />
                   <input value={editingDraft.related} onChange={(event) => setEditingDraft((current) => ({ ...current, related: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" />
                   <input value={editingDraft.dueLabel} onChange={(event) => setEditingDraft((current) => ({ ...current, dueLabel: event.target.value }))} className="h-11 w-full rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" />
@@ -264,8 +321,8 @@ export function TasksWorkspace({
                     <input value={editingDraft.assignee} onChange={(event) => setEditingDraft((current) => ({ ...current, assignee: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Responsable" />
                   </div>
                   <div className="flex gap-3">
-                    <button onClick={saveEdit} disabled={isPending} className="rounded-2xl bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-45">Guardar</button>
-                    <button onClick={() => setEditingId(null)} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)]">Cancelar</button>
+                    <button onClick={saveEdit} disabled={isPending || !editingDraft.title.trim()} className="rounded-2xl bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-45">Guardar</button>
+                    <button onClick={cancelEdit} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)]">Cancelar</button>
                   </div>
                 </div>
               ) : (

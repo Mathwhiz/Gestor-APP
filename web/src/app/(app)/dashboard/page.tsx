@@ -32,19 +32,19 @@ export default async function DashboardPage() {
       />
 
       <section className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
-        <div className="rounded-[28px] border border-[var(--color-line)] bg-[linear-gradient(135deg,#163742_0%,#214e5c_52%,#285d6c_100%)] px-6 py-6 text-white sm:px-7">
+        <div className="rounded-[24px] border border-[var(--color-line)] bg-[linear-gradient(135deg,#163742_0%,#214e5c_52%,#285d6c_100%)] px-4 py-5 text-white sm:rounded-[28px] sm:px-7 sm:py-6">
           <p className="text-xs uppercase tracking-[0.22em] text-white/55">Lectura rapida</p>
-          <div className="mt-4 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
             <div>
-              <h2 className="text-3xl font-semibold tracking-tight">
+              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                 Hay {quickStats.observedProcedures} tramites observados y {quickStats.urgentProcedures} frentes que piden accion hoy.
               </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-white/74">
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/74 sm:leading-7">
                 El tablero ya cruza tramites, tareas, caja y operaciones activas sin depender de
                 textos fijos del prototipo.
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3 lg:grid-cols-1">
               {[
                 ["Observados", String(quickStats.observedProcedures)],
                 ["Caja actual", `$ ${Math.abs(quickStats.cashBalance).toLocaleString("es-AR")}`],
@@ -64,13 +64,13 @@ export default async function DashboardPage() {
         </SectionCard>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
         {summaries.map((summary: SummaryItem) => (
           <SummaryCard key={summary.title} {...summary} />
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+      <section className="grid gap-4 sm:gap-6 xl:grid-cols-[1.4fr_1fr]">
         <SectionCard title="Tramites que piden accion" description="Lo que deberia ordenarse primero hoy.">
           <div className="space-y-3">
             {procedures.slice(0, 4).map((procedure: ProcedureItem) => (
@@ -79,7 +79,7 @@ export default async function DashboardPage() {
                 href={`/tramites/${procedure.id}`}
                 className="flex flex-col gap-3 rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 py-4 transition hover:border-[var(--color-accent)]/40 hover:bg-white"
               >
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-[var(--color-ink)]">{procedure.type}</p>
                     <p className="mt-1 text-sm text-[var(--color-muted)]">
@@ -118,13 +118,13 @@ export default async function DashboardPage() {
         </SectionCard>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
+      <section className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         <SectionCard title="Ultimos movimientos" description="Caja y gastos recientes.">
           <div className="space-y-3">
             {movements.slice(0, 5).map((movement: MovementItem) => (
               <div
                 key={movement.id}
-                className="flex items-center justify-between rounded-2xl border border-[var(--color-line)] px-4 py-3"
+                className="flex flex-col gap-3 rounded-2xl border border-[var(--color-line)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <p className="text-sm font-semibold text-[var(--color-ink)]">{movement.description}</p>
@@ -169,7 +169,7 @@ export default async function DashboardPage() {
         </SectionCard>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
+      <section className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         <SectionCard title="Operaciones activas" description="Negocio de agencia y stock en seguimiento.">
           <div className="space-y-3">
             {operations.slice(0, 4).map((operation: OperationItem) => (
@@ -177,7 +177,7 @@ export default async function DashboardPage() {
                 key={operation.id}
                 className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 py-4"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-[var(--color-ink)]">{operation.type}</p>
                     <p className="mt-1 text-sm text-[var(--color-muted)]">{operation.vehicle}</p>

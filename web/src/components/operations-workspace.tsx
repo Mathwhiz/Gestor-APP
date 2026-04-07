@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { operations as mockOperations } from "@/data/mock-data";
 import { createOperationAction, updateOperationAction } from "@/app/(app)/actions";
+import { confirmDiscardChanges, useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 
 type OperationItem = {
   id: string;
@@ -82,6 +83,7 @@ export function OperationsWorkspace({
     note: "",
     status: "Abierta",
   });
+  const [editingInitial, setEditingInitial] = useState<string>("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -110,6 +112,23 @@ export function OperationsWorkspace({
         total + Number(item.margin.replace(/[^\d-]/g, "")),
       0,
     );
+  const hasDraftChanges = Boolean(
+    draft.type !== "Venta" ||
+      draft.vehicle.trim() ||
+      draft.buyer.trim() ||
+      draft.seller !== "Agencia" ||
+      draft.date !== "06/04/2026" ||
+      draft.agreedPrice !== "$ 0" ||
+      draft.realCost !== "$ 0" ||
+      draft.commission !== "$ 0" ||
+      draft.margin !== "$ 0" ||
+      draft.note.trim(),
+  );
+  const hasEditChanges =
+    editingId !== null &&
+    JSON.stringify(editingDraft) !== editingInitial;
+
+  useUnsavedChanges((showForm && hasDraftChanges) || hasEditChanges);
 
   function addOperation() {
     if (!canEdit || !draft.vehicle.trim()) return;
@@ -136,13 +155,16 @@ export function OperationsWorkspace({
         margin: "$ 0",
         note: "",
       });
+      setShowForm(false);
       setSuccess("Operacion creada correctamente.");
     });
   }
 
   function startEditing(operation: OperationItem) {
+    setError("");
+    setSuccess("");
     setEditingId(operation.id);
-    setEditingDraft({
+    const nextDraft = {
       type: operation.type,
       vehicle: operation.vehicle,
       buyer: operation.buyer === "Sin comprador" ? "" : operation.buyer,
@@ -154,7 +176,9 @@ export function OperationsWorkspace({
       margin: operation.margin,
       note: operation.note === "Sin observaciones" ? "" : operation.note,
       status: operation.status,
-    });
+    };
+    setEditingDraft(nextDraft);
+    setEditingInitial(JSON.stringify(nextDraft));
   }
 
   function saveEdit() {
@@ -176,8 +200,35 @@ export function OperationsWorkspace({
         current.map((operation) => (operation.id === editingId ? result.item : operation)),
       );
       setEditingId(null);
+      setEditingInitial("");
       setSuccess("Operacion actualizada.");
     });
+  }
+
+  function resetDraft() {
+    if (!confirmDiscardChanges(hasDraftChanges)) return;
+    setDraft({
+      type: "Venta",
+      vehicle: "",
+      buyer: "",
+      seller: "Agencia",
+      date: "06/04/2026",
+      agreedPrice: "$ 0",
+      realCost: "$ 0",
+      commission: "$ 0",
+      margin: "$ 0",
+      note: "",
+    });
+    setError("");
+    setSuccess("");
+  }
+
+  function cancelEdit() {
+    if (!confirmDiscardChanges(hasEditChanges)) return;
+    setEditingId(null);
+    setEditingInitial("");
+    setError("");
+    setSuccess("");
   }
 
   return (
@@ -220,10 +271,16 @@ export function OperationsWorkspace({
 
       <section className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
         <div className="flex items-center justify-between gap-4">
-          <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de operacion</p>
+          <div>
+            <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Alta rapida de operacion</p>
+            {showForm && hasDraftChanges ? <p className="mt-1 text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en el alta.</p> : null}
+          </div>
           <div className="flex items-center gap-3">
             {!canEdit ? <p className="text-sm text-[var(--color-muted)]">Tu rol solo puede consultar.</p> : null}
-            <button onClick={() => setShowForm((current) => !current)} disabled={!canEdit} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
+            <button onClick={() => {
+              if (showForm && !confirmDiscardChanges(hasDraftChanges)) return;
+              setShowForm((current) => !current);
+            }} disabled={!canEdit} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
               {showForm ? "Ocultar" : "Mostrar"}
             </button>
           </div>
@@ -264,7 +321,7 @@ export function OperationsWorkspace({
               </option>
             ))}
           </select>
-          <button onClick={addOperation} disabled={!canEdit || isPending} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
+          <button onClick={addOperation} disabled={!canEdit || isPending || !draft.vehicle.trim()} className="h-11 rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-45">
             {isPending ? "Guardando..." : "Agregar"}
           </button>
           <input value={draft.date} onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Fecha" disabled={!canEdit || isPending} />
@@ -274,6 +331,19 @@ export function OperationsWorkspace({
           <input value={draft.margin} onChange={(event) => setDraft((current) => ({ ...current, margin: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Margen" disabled={!canEdit || isPending} />
         </div>
         <textarea value={draft.note} onChange={(event) => setDraft((current) => ({ ...current, note: event.target.value }))} className="mt-3 min-h-24 w-full rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm outline-none focus:border-[var(--color-accent)] disabled:bg-[var(--color-panel-soft)]" placeholder="Nota operativa" disabled={!canEdit || isPending} />
+        {showForm ? (
+          <div className="mt-3 flex gap-3">
+            <button onClick={resetDraft} disabled={!canEdit || isPending} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
+              Limpiar
+            </button>
+            <button onClick={() => {
+              resetDraft();
+              setShowForm(false);
+            }} disabled={!canEdit || isPending} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-45">
+              Cancelar carga
+            </button>
+          </div>
+        ) : null}
         </>
         ) : null}
         {error ? <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p> : null}
@@ -288,6 +358,7 @@ export function OperationsWorkspace({
             <article key={operation.id} className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
               {isEditing ? (
                 <div className="space-y-3">
+                  {hasEditChanges ? <p className="text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en esta edicion.</p> : null}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <select value={editingDraft.type} onChange={(event) => setEditingDraft((current) => ({ ...current, type: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]">
                       <option>Venta</option>
@@ -335,10 +406,10 @@ export function OperationsWorkspace({
                   </div>
                   <textarea value={editingDraft.note} onChange={(event) => setEditingDraft((current) => ({ ...current, note: event.target.value }))} className="min-h-24 w-full rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Nota operativa" />
                   <div className="flex gap-3">
-                    <button onClick={saveEdit} disabled={isPending} className="rounded-2xl bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-45">
+                    <button onClick={saveEdit} disabled={isPending || !editingDraft.vehicle.trim()} className="rounded-2xl bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-45">
                       Guardar
                     </button>
-                    <button onClick={() => setEditingId(null)} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)]">
+                    <button onClick={cancelEdit} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)]">
                       Cancelar
                     </button>
                   </div>
