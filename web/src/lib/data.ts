@@ -23,7 +23,7 @@ export async function getContactsData(options?: { includeArchived?: boolean }) {
     where: options?.includeArchived ? undefined : { archivedAt: null },
     orderBy: [{ archivedAt: "asc" }, { createdAt: "desc" }],
   });
-  return contacts.map((contact) => ({
+  return contacts.map((contact: (typeof contacts)[number]) => ({
     id: contact.id,
     name: contact.name,
     role: formatLabel(contact.role),
@@ -40,7 +40,7 @@ export async function getFinancialMovementsData() {
   const prisma = getPrismaClient();
 
   const movements = await prisma.financialMovement.findMany({ orderBy: { createdAt: "desc" } });
-  return movements.map((movement) => ({
+  return movements.map((movement: (typeof movements)[number]) => ({
     id: movement.id,
     date: movement.dateLabel,
     description: movement.description,
@@ -56,7 +56,7 @@ export async function getProceduresData() {
   const prisma = getPrismaClient();
 
   const procedures = await prisma.procedure.findMany({ orderBy: { createdAt: "desc" } });
-  return procedures.map((procedure) => ({
+  return procedures.map((procedure: (typeof procedures)[number]) => ({
     id: procedure.slug,
     type: procedure.type,
     client: procedure.clientName,
@@ -77,7 +77,7 @@ export async function getTasksData(options?: { includeArchived?: boolean }) {
     where: options?.includeArchived ? undefined : { archivedAt: null },
     orderBy: [{ archivedAt: "asc" }, { createdAt: "desc" }],
   });
-  return tasks.map((task) => ({
+  return tasks.map((task: (typeof tasks)[number]) => ({
     id: task.id,
     title: task.title,
     related: task.related,
@@ -100,7 +100,7 @@ export async function getGuidesData(options?: { includeArchived?: boolean }) {
     where: options?.includeArchived ? undefined : { archivedAt: null },
     orderBy: [{ archivedAt: "asc" }, { createdAt: "desc" }],
   });
-  return guides.map((guide) => ({
+  return guides.map((guide: (typeof guides)[number]) => ({
     id: guide.id,
     title: guide.title,
     summary: guide.summary,
@@ -120,7 +120,7 @@ export async function getVehiclesData(options?: { includeArchived?: boolean }) {
     where: options?.includeArchived ? undefined : { archivedAt: null },
     orderBy: [{ archivedAt: "asc" }, { createdAt: "desc" }],
   });
-  return vehicles.map((vehicle) => ({
+  return vehicles.map((vehicle: (typeof vehicles)[number]) => ({
     id: vehicle.id,
     plate: vehicle.plate,
     name: vehicle.name,
@@ -167,7 +167,7 @@ type VehicleDetail = {
 
 export async function getVehicleDetailData(id: string): Promise<VehicleDetail | null> {
   if (!hasDatabase()) {
-    const vehicle = mockVehicles.find((item) => item.id === id);
+    const vehicle = mockVehicles.find((item: (typeof mockVehicles)[number]) => item.id === id);
     if (!vehicle) return null;
 
     return {
@@ -175,11 +175,11 @@ export async function getVehicleDetailData(id: string): Promise<VehicleDetail | 
       archived: false,
       procedures: mockProcedures
         .filter(
-          (procedure) =>
+          (procedure: (typeof mockProcedures)[number]) =>
             procedure.vehicle.toLowerCase().includes(vehicle.plate.toLowerCase()) ||
             procedure.vehicle.toLowerCase().includes(vehicle.name.toLowerCase().split(" ")[0]),
         )
-        .map((procedure) => ({
+        .map((procedure: (typeof mockProcedures)[number]) => ({
           id: procedure.id,
           type: procedure.type,
           client: procedure.client,
@@ -190,11 +190,11 @@ export async function getVehicleDetailData(id: string): Promise<VehicleDetail | 
         })),
       operations: mockOperations
         .filter(
-          (operation) =>
+          (operation: (typeof mockOperations)[number]) =>
             operation.vehicle.toLowerCase().includes(vehicle.plate.toLowerCase()) ||
             operation.vehicle.toLowerCase().includes(vehicle.name.toLowerCase().split(" ")[0]),
         )
-        .map((operation) => ({
+        .map((operation: (typeof mockOperations)[number]) => ({
           id: operation.id,
           type: operation.type,
           status: operation.status,
@@ -241,7 +241,7 @@ export async function getVehicleDetailData(id: string): Promise<VehicleDetail | 
     tone: mapVehicleTone(vehicle.status),
     note: vehicle.note,
     archived: Boolean(vehicle.archivedAt),
-    procedures: procedures.map((procedure) => ({
+    procedures: procedures.map((procedure: (typeof procedures)[number]) => ({
       id: procedure.slug,
       type: procedure.type,
       client: procedure.clientName,
@@ -250,7 +250,7 @@ export async function getVehicleDetailData(id: string): Promise<VehicleDetail | 
       priority: formatLabel(procedure.priority),
       targetDate: procedure.targetDate,
     })),
-    operations: vehicle.operations.map((operation) => ({
+    operations: vehicle.operations.map((operation: (typeof vehicle.operations)[number]) => ({
       id: operation.id,
       type: formatLabel(operation.type),
       status: formatOperationStatus(operation.status),
@@ -297,15 +297,15 @@ type ContactDetail = {
 
 export async function getContactDetailData(id: string): Promise<ContactDetail | null> {
   if (!hasDatabase()) {
-    const contact = mockContacts.find((item) => item.id === id);
+    const contact = mockContacts.find((item: (typeof mockContacts)[number]) => item.id === id);
     if (!contact) return null;
 
     return {
       ...contact,
       archived: false,
       procedures: mockProcedures
-        .filter((procedure) => procedure.client === contact.name)
-        .map((procedure) => ({
+        .filter((procedure: (typeof mockProcedures)[number]) => procedure.client === contact.name)
+        .map((procedure: (typeof mockProcedures)[number]) => ({
           id: procedure.id,
           type: procedure.type,
           vehicle: procedure.vehicle,
@@ -316,9 +316,10 @@ export async function getContactDetailData(id: string): Promise<ContactDetail | 
         })),
       operations: mockOperations
         .filter(
-          (operation) => operation.buyer === contact.name || operation.seller === contact.name,
+          (operation: (typeof mockOperations)[number]) =>
+            operation.buyer === contact.name || operation.seller === contact.name,
         )
-        .map((operation) => ({
+        .map((operation: (typeof mockOperations)[number]) => ({
           id: operation.id,
           type: operation.type,
           vehicle: operation.vehicle,
@@ -369,7 +370,7 @@ export async function getContactDetailData(id: string): Promise<ContactDetail | 
       priority: formatLabel(procedure.priority),
       targetDate: procedure.targetDate,
     })),
-    operations: operations.map((operation) => ({
+    operations: operations.map((operation: (typeof operations)[number]) => ({
       id: operation.id,
       type: formatLabel(operation.type),
       vehicle: operation.vehicleLabel,
@@ -388,7 +389,7 @@ export async function getOperationsData() {
   const prisma = getPrismaClient();
 
   const operations = await prisma.operation.findMany({ orderBy: { createdAt: "desc" } });
-  return operations.map((operation) => ({
+  return operations.map((operation: (typeof operations)[number]) => ({
     id: operation.id,
     type: formatLabel(operation.type),
     vehicle: operation.vehicleLabel,
@@ -434,20 +435,20 @@ type OperationDetail = {
 
 export async function getOperationDetailData(id: string): Promise<OperationDetail | null> {
   if (!hasDatabase()) {
-    const operation = mockOperations.find((item) => item.id === id);
+    const operation = mockOperations.find((item: (typeof mockOperations)[number]) => item.id === id);
     if (!operation) return null;
 
-    const matchedVehicle = mockVehicles.find((vehicle) =>
+    const matchedVehicle = mockVehicles.find((vehicle: (typeof mockVehicles)[number]) =>
       operation.vehicle.toLowerCase().includes(vehicle.plate.toLowerCase()),
     );
     const relatedProcedures = mockProcedures
       .filter(
-        (procedure) =>
+        (procedure: (typeof mockProcedures)[number]) =>
           procedure.vehicle.toLowerCase().includes(matchedVehicle?.plate.toLowerCase() ?? "") ||
           procedure.client === operation.buyer ||
           procedure.client === operation.seller,
       )
-      .map((procedure) => ({
+      .map((procedure: (typeof mockProcedures)[number]) => ({
         id: procedure.id,
         type: procedure.type,
         client: procedure.client,
@@ -522,7 +523,7 @@ export async function getOperationDetailData(id: string): Promise<OperationDetai
       : null,
     buyerRef: operation.buyer ? { id: operation.buyer.id, label: operation.buyer.name } : null,
     sellerRef: operation.seller ? { id: operation.seller.id, label: operation.seller.name } : null,
-    relatedProcedures: relatedProcedures.map((procedure) => ({
+    relatedProcedures: relatedProcedures.map((procedure: (typeof relatedProcedures)[number]) => ({
       id: procedure.slug,
       type: procedure.type,
       client: procedure.clientName,
