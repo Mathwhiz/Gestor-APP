@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { getCurrentAppUser } from "@/lib/auth";
 import { getSupabaseAuthEnv } from "@/lib/supabase/env";
 
@@ -89,12 +90,7 @@ export default async function LoginPage({
                 Falta completar las variables publicas de Supabase para habilitar el login real.
               </div>
             ) : (
-              <a
-                className="flex h-12 items-center justify-center rounded-2xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-strong)]"
-                href={`/auth/login?next=${encodeURIComponent(next)}`}
-              >
-                Continuar con Google
-              </a>
+              <GoogleSignInButton next={next} />
             )}
 
             <div className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
