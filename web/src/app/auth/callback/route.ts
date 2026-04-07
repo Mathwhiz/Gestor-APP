@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isAllowedEmail, syncUserProfile } from "@/lib/auth";
-import { getSupabaseAuthEnv } from "@/lib/supabase/env";
+import { getAppOrigin, getSupabaseAuthEnv } from "@/lib/supabase/env";
 
 export async function GET(request: NextRequest) {
   const { url, anonKey, configured } = getSupabaseAuthEnv();
+  const appOrigin = getAppOrigin();
 
   if (!configured || !url || !anonKey) {
     return NextResponse.redirect(new URL("/login?message=config", request.url));
@@ -17,13 +18,7 @@ export async function GET(request: NextRequest) {
     next = "/dashboard";
   }
 
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  const isLocalEnv = process.env.NODE_ENV === "development";
-  const redirectUrl = isLocalEnv
-    ? new URL(next, request.url)
-    : forwardedHost
-      ? new URL(`https://${forwardedHost}${next}`)
-      : new URL(next, request.url);
+  const redirectUrl = new URL(next, appOrigin ?? request.url);
   const response = NextResponse.redirect(redirectUrl);
 
   const supabase = createServerClient(url, anonKey, {

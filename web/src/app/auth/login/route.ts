@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { getSupabaseAuthEnv } from "@/lib/supabase/env";
+import { getAppOrigin, getSupabaseAuthEnv } from "@/lib/supabase/env";
 
 export async function GET(request: NextRequest) {
   const { url, anonKey, configured } = getSupabaseAuthEnv();
+  const appOrigin = getAppOrigin() ?? request.nextUrl.origin;
 
   if (!configured || !url || !anonKey) {
     return NextResponse.redirect(new URL("/login?message=config", request.url));
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${request.nextUrl.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      redirectTo: `${appOrigin}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });
 
