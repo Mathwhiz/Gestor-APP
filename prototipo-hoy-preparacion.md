@@ -371,11 +371,25 @@ Se sigue con:
 - relaciones reales entre tramites, vehiculos y operaciones
 - validaciones de negocio en server actions
 - proteccion basica contra cambios sin guardar
-- mejora mobile de shell, dashboard, finanzas, tramites y contactos
+- mejora mobile de shell, dashboard, finanzas, tramites, contactos, operaciones, tareas y vehiculos
+- login estabilizado con dominio canonico y flujo de callback consistente en Vercel/Supabase
+- detalle de tramite con historial operativo real al cambiar estado, marcar requisitos, cargar movimientos y agregar notas
+- ayudas mas integradas al flujo con centro de guias mas fuerte y acceso desde tramites y dashboard
+- boton global `Nuevo` con accesos reales a altas frecuentes
+- `finanzas` reforzado con:
+  - lectura ejecutiva de ingresos, egresos y balance
+  - balances por area de negocio
+  - ranking de categorias de ingreso y egreso
+  - indicadores de tramites sin cobro cargado, observados y pendientes documentales
+  - panel de seguimiento de tramites activos sin ingreso vinculado
+- dashboard con mejor lectura de observados, documentos pendientes y bloqueos operativos
+- tramites con alertas operativas y sugerencias accionables
 
 ### Pendiente cercano
 
-- seguir puliendo mobile en operaciones, tareas y vehiculos
 - revisar visualmente produccion desde telefono con datos reales
 - rotar la password de base compartida en el chat
-- decidir si el siguiente bloque es `adjuntos/documentos` o mas pulido de UX
+- reforzar finanzas con cuentas por cobrar / pagar mas explicitas
+- sumar reportes comparativos simples por periodo o por area
+- mejorar deteccion de duplicados en contactos
+- seguir puliendo UX de carga rapida y lectura para usuario no tecnico
