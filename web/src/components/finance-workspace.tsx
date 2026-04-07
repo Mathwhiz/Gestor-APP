@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { movements as mockMovements } from "@/data/mock-data";
@@ -71,6 +72,14 @@ export function FinanceWorkspace({
     observedProcedures: number;
     proceduresPendingDocs: number;
     openOperationsMargin: number;
+    pendingCollectionProcedures: {
+      id: string;
+      type: string;
+      client: string;
+      status: string;
+      priority: string;
+      targetDate: string;
+    }[];
   };
   canEdit: boolean;
 }) {
@@ -506,6 +515,54 @@ export function FinanceWorkspace({
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
+              Seguimiento de cobro
+            </p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+              Tramites activos sin ingreso cargado
+            </h2>
+          </div>
+          <Link
+            href="/tramites"
+            className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+          >
+            Ver tramites
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-3">
+          {insights.pendingCollectionProcedures.length > 0 ? (
+            insights.pendingCollectionProcedures.map((item) => (
+              <Link
+                key={item.id}
+                href={`/tramites/${item.id}`}
+                className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 py-4 transition hover:border-[var(--color-accent)] hover:bg-white"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--color-ink)]">{item.type}</p>
+                    <p className="mt-1 text-sm text-[var(--color-muted)]">{item.client}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                    <span className="rounded-full bg-white px-3 py-1">{item.status}</span>
+                    <span className="rounded-full bg-white px-3 py-1">{item.priority}</span>
+                    <span className="rounded-full bg-white px-3 py-1">{item.targetDate}</span>
+                  </div>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-[rgba(43,111,85,0.22)] bg-[var(--color-success-soft)] px-4 py-4">
+              <p className="text-sm font-semibold text-[var(--color-ink)]">
+                No hay tramites activos sin ingreso cargado en este momento.
+              </p>
+            </div>
+          )}
         </div>
       </section>
 

@@ -64,6 +64,14 @@ type FinanceInsights = {
   observedProcedures: number;
   proceduresPendingDocs: number;
   openOperationsMargin: number;
+  pendingCollectionProcedures: {
+    id: string;
+    type: string;
+    client: string;
+    status: string;
+    priority: string;
+    targetDate: string;
+  }[];
 };
 
 export async function getFinanceInsightsData(): Promise<FinanceInsights> {
@@ -133,6 +141,20 @@ export async function getFinanceInsightsData(): Promise<FinanceInsights> {
             total + Number(operation.margin.replace(/[^\d-]/g, "")),
           0,
         ),
+      pendingCollectionProcedures: mockProcedures
+        .filter(
+          (procedure: (typeof mockProcedures)[number]) =>
+            procedure.status !== "Terminado" && procedure.status !== "Borrador",
+        )
+        .slice(0, 5)
+        .map((procedure: (typeof mockProcedures)[number]) => ({
+          id: procedure.id,
+          type: procedure.type,
+          client: procedure.client,
+          status: procedure.status,
+          priority: procedure.priority,
+          targetDate: procedure.targetDate,
+        })),
     };
   }
 
@@ -169,6 +191,24 @@ export async function getFinanceInsightsData(): Promise<FinanceInsights> {
     observedProcedures,
     proceduresPendingDocs,
     openOperationsMargin,
+    pendingCollectionProcedures: procedures
+      .filter((procedure: (typeof procedures)[number]) => {
+        const hasPositiveMovement = procedure.movements.some((movement) => movement.amount.startsWith("+"));
+        return (
+          procedure.status !== "TERMINADO" &&
+          procedure.status !== "BORRADOR" &&
+          !hasPositiveMovement
+        );
+      })
+      .slice(0, 6)
+      .map((procedure: (typeof procedures)[number]) => ({
+        id: procedure.slug,
+        type: procedure.type,
+        client: procedure.clientName,
+        status: formatProcedureStatus(procedure.status),
+        priority: formatLabel(procedure.priority),
+        targetDate: procedure.targetDate,
+      })),
   };
 }
 
