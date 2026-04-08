@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { canEditRole, requireAuthenticatedAppUser } from "@/lib/auth";
 import { getPrismaClient } from "@/lib/prisma";
+import { getProcedureTemplate } from "@/lib/procedure-templates";
 
 function forbiddenResult() {
   return { ok: false as const, error: "No tenes permiso para editar." };
@@ -311,6 +312,7 @@ export async function createFinancialMovementAction(input: {
       area: input.area,
       account: movement.account,
       amount: movement.amount,
+      archived: false,
     },
   };
 }
@@ -369,6 +371,33 @@ export async function updateFinancialMovementAction(input: {
       area: input.area,
       account: movement.account,
       amount: movement.amount,
+      archived: Boolean(movement.archivedAt),
+    },
+  };
+}
+
+export async function toggleFinancialMovementArchivedAction(input: {
+  id: string;
+  archived: boolean;
+}) {
+  const { profile } = await requireAuthenticatedAppUser();
+  if (!canEditRole(profile.role)) return forbiddenResult();
+
+  const prisma = getPrismaClient();
+  const movement = await prisma.financialMovement.update({
+    where: { id: input.id },
+    data: {
+      archivedAt: input.archived ? null : new Date(),
+    },
+  });
+
+  revalidatePath("/finanzas");
+
+  return {
+    ok: true as const,
+    item: {
+      id: movement.id,
+      archived: Boolean(movement.archivedAt),
     },
   };
 }
@@ -703,6 +732,7 @@ export async function createProcedureAction(input: {
     resolveContactIdByName(input.client),
     resolveVehicleByLabel(input.vehicle),
   ]);
+  const template = getProcedureTemplate(input.type.trim());
 
   const procedure = await prisma.procedure.create({
     data: {
@@ -714,12 +744,18 @@ export async function createProcedureAction(input: {
       vehicleId: vehicle?.id ?? null,
       status: "BORRADOR",
       priority: priorityMap[input.priority as keyof typeof priorityMap] ?? "MEDIA",
-      jurisdiction: input.jurisdiction.trim() || "La Pampa",
+      jurisdiction: input.jurisdiction.trim() || template.defaultJurisdiction,
       targetDate: input.targetDate.trim() || "Sin fecha",
-      guideTitle: `Guia base de ${input.type.trim().toLowerCase()}`,
-      guideSummary: "Tramite inicial cargado desde la vista principal. Completar seguimiento y checklist.",
+      guideTitle: template.type,
+      guideSummary: template.summary,
+      requirements: {
+        create: template.checklist.map((item) => ({
+          label: item.label,
+          note: item.note,
+        })),
+      },
       notes: {
-        create: [{ body: "Tramite creado desde alta rapida." }],
+        create: [{ body: `Tramite creado desde alta rapida con plantilla ${template.type}.` }],
       },
       timeline: {
         create: [
@@ -755,6 +791,40 @@ export async function createProcedureAction(input: {
       priority: input.priority,
       jurisdiction: procedure.jurisdiction,
       targetDate: procedure.targetDate,
+      archived: false,
+    },
+  };
+}
+
+export async function toggleProcedureArchivedAction(input: {
+  id: string;
+  archived: boolean;
+}) {
+  const { profile } = await requireAuthenticatedAppUser();
+  if (!canEditRole(profile.role)) return forbiddenResult();
+
+  const prisma = getPrismaClient();
+  const procedure = await prisma.procedure.update({
+    where: { slug: input.id },
+    data: {
+      archivedAt: input.archived ? null : new Date(),
+    },
+    select: {
+      id: true,
+      slug: true,
+      archivedAt: true,
+    },
+  });
+
+  revalidatePath("/tramites");
+  revalidatePath(`/tramites/${procedure.slug}`);
+
+  return {
+    ok: true as const,
+    item: {
+      id: procedure.id,
+      slug: procedure.slug,
+      archived: Boolean(procedure.archivedAt),
     },
   };
 }
@@ -1080,6 +1150,7 @@ export async function createOperationAction(input: {
       status: operation.status === "RESERVADA" ? "Reservada" : "Abierta",
       tone: operation.status === "RESERVADA" ? ("warning" as const) : ("info" as const),
       note: operation.notes ?? "Sin observaciones",
+      archived: false,
     },
   };
 }
@@ -1188,6 +1259,34 @@ export async function updateOperationAction(input: {
               ? ("danger" as const)
               : ("info" as const),
       note: operation.notes ?? "Sin observaciones",
+      archived: Boolean(operation.archivedAt),
+    },
+  };
+}
+
+export async function toggleOperationArchivedAction(input: {
+  id: string;
+  archived: boolean;
+}) {
+  const { profile } = await requireAuthenticatedAppUser();
+  if (!canEditRole(profile.role)) return forbiddenResult();
+
+  const prisma = getPrismaClient();
+  const operation = await prisma.operation.update({
+    where: { id: input.id },
+    data: {
+      archivedAt: input.archived ? null : new Date(),
+    },
+  });
+
+  revalidatePath("/operaciones");
+  revalidatePath(`/operaciones/${operation.id}`);
+
+  return {
+    ok: true as const,
+    item: {
+      id: operation.id,
+      archived: Boolean(operation.archivedAt),
     },
   };
 }

@@ -10,7 +10,7 @@ export default async function OperationsPage({
   const { profile } = await requireAuthenticatedAppUser();
   const params = (await searchParams) ?? {};
   const [operations, contacts, vehicles] = await Promise.all([
-    getOperationsData(),
+    getOperationsData({ includeArchived: true }),
     getContactsData(),
     getVehiclesData(),
   ]);

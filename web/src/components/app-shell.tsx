@@ -38,7 +38,7 @@ export function AppShell({
     title: string;
     meta: string;
     href: string;
-    kind: "tramite" | "contacto" | "vehiculo" | "operacion";
+    kind: "tramite" | "contacto" | "vehiculo" | "operacion" | "tarea" | "guia";
   }[];
 }) {
   const pathname = usePathname();

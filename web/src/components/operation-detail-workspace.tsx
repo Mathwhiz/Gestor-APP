@@ -30,6 +30,11 @@ type OperationDetail = {
     statusTone: "success" | "warning" | "danger" | "neutral" | "info";
     targetDate: string;
   }[];
+  alerts: {
+    title: string;
+    detail: string;
+    tone: "success" | "warning" | "danger" | "neutral" | "info";
+  }[];
 };
 
 export function OperationDetailWorkspace({ detail }: { detail: OperationDetail }) {
@@ -101,6 +106,15 @@ export function OperationDetailWorkspace({ detail }: { detail: OperationDetail }
             {detail.note}
           </div>
         </SectionCard>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {detail.alerts.map((alert) => (
+          <div key={alert.title} className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5">
+            <StatusBadge tone={alert.tone}>{alert.title}</StatusBadge>
+            <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">{alert.detail}</p>
+          </div>
+        ))}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">

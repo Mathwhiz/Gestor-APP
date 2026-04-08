@@ -65,6 +65,8 @@ export type ProcedureDetail = {
   movements: { label: string; meta: string; amount: string }[];
   guide: { title: string; summary: string; steps: string[]; links: { label: string; href: string }[] };
   notes: string[];
+  alerts?: { title: string; detail: string; tone: "success" | "warning" | "danger" | "neutral" | "info" }[];
+  templateName?: string;
 };
 
 export const procedureDetails: Record<string, ProcedureDetail> = {
@@ -113,5 +115,10 @@ export const procedureDetails: Record<string, ProcedureDetail> = {
       "Separar en notas lo que es requisito nacional de lo que surge por practica local en La Pampa.",
       "No cerrar el tramite como terminado hasta tener trazabilidad de entrega al cliente.",
     ],
+    alerts: [
+      { title: "2 requisitos pendientes", detail: "Todavia falta documentacion para cerrar el expediente.", tone: "warning" },
+      { title: "Sin cobro adicional", detail: "Solo esta cargado el cobro inicial del tramite.", tone: "info" },
+    ],
+    templateName: "Transferencia",
   },
 };

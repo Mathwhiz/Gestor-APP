@@ -4,8 +4,9 @@ import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { procedures as mockProcedures } from "@/data/mock-data";
-import { createProcedureAction } from "@/app/(app)/actions";
+import { createProcedureAction, toggleProcedureArchivedAction } from "@/app/(app)/actions";
 import { confirmDiscardChanges, useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { getProcedureTemplate, listProcedureTemplates } from "@/lib/procedure-templates";
 
 type ProcedureItem = {
   id: string;
@@ -17,9 +18,11 @@ type ProcedureItem = {
   priority: string;
   jurisdiction: string;
   targetDate: string;
+  archived?: boolean;
 };
 
-const filters = ["Todos", "Pendiente de documentacion", "Observado", "Urgente", "La Pampa"] as const;
+const filters = ["Todos", "Pendiente de documentacion", "Observado", "Urgente", "La Pampa", "Archivados"] as const;
+const procedureTemplates = listProcedureTemplates();
 
 export function ProceduresWorkspace({
   initialItems = mockProcedures,
@@ -69,10 +72,14 @@ export function ProceduresWorkspace({
             .toLowerCase()
             .includes(search.toLowerCase());
         const matchesFilter =
-          activeFilter === "Todos" ||
-          procedure.status === activeFilter ||
-          procedure.priority === activeFilter ||
-          procedure.jurisdiction === activeFilter;
+          activeFilter === "Todos"
+            ? !procedure.archived
+            : activeFilter === "Archivados"
+              ? Boolean(procedure.archived)
+              : !procedure.archived &&
+                (procedure.status === activeFilter ||
+                  procedure.priority === activeFilter ||
+                  procedure.jurisdiction === activeFilter);
         return matchesSearch && matchesFilter;
       }),
     [activeFilter, items, search],
@@ -128,6 +135,40 @@ export function ProceduresWorkspace({
     setSuccess("");
   }
 
+  function applyTemplate(type: string) {
+    const template = getProcedureTemplate(type);
+    setDraft((current) => ({
+      ...current,
+      type: template.type,
+      jurisdiction: template.defaultJurisdiction,
+      priority: template.defaultPriority,
+    }));
+  }
+
+  function toggleArchived(procedure: ProcedureItem) {
+    if (!canEdit) return;
+
+    setError("");
+    setSuccess("");
+    startTransition(async () => {
+      const result = await toggleProcedureArchivedAction({
+        id: procedure.id,
+        archived: Boolean(procedure.archived),
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setItems((current) =>
+        current.map((item) =>
+          item.id === procedure.id ? { ...item, archived: result.item.archived } : item,
+        ),
+      );
+      setSuccess(procedure.archived ? "Tramite reactivado." : "Tramite archivado.");
+    });
+  }
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -165,9 +206,9 @@ export function ProceduresWorkspace({
 
         <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
           {[
-            ["Mostrando", String(filtered.length)],
-            ["Pendientes", String(items.filter((item) => item.statusTone === "warning").length)],
-            ["Observados", String(items.filter((item) => item.statusTone === "danger").length)],
+            ["Activos", String(items.filter((item) => !item.archived).length)],
+            ["Pendientes", String(items.filter((item) => item.statusTone === "warning" && !item.archived).length)],
+            ["Archivados", String(items.filter((item) => item.archived).length)],
           ].map(([label, value]) => (
             <div key={label} className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">{label}</p>
@@ -211,6 +252,24 @@ export function ProceduresWorkspace({
         ) : null}
 
         {showForm ? (
+          <>
+          <div className="mb-3 flex flex-wrap gap-2">
+            {procedureTemplates.map((template) => (
+              <button
+                key={template.type}
+                type="button"
+                onClick={() => applyTemplate(template.type)}
+                disabled={isPending}
+                className={`rounded-full border px-3 py-2 text-xs uppercase tracking-[0.14em] transition ${
+                  draft.type === template.type
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
+                    : "border-[var(--color-line)] text-[var(--color-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                } disabled:opacity-45`}
+              >
+                {template.type}
+              </button>
+            ))}
+          </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
             <select
               value={draft.type}
@@ -218,10 +277,9 @@ export function ProceduresWorkspace({
               className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
               disabled={isPending}
             >
-              <option>Transferencia</option>
-              <option>Duplicado de cedula</option>
-              <option>Denuncia de venta</option>
-              <option>Patentamiento</option>
+              {procedureTemplates.map((template) => (
+                <option key={template.type}>{template.type}</option>
+              ))}
             </select>
             <select
               value={draft.client}
@@ -278,6 +336,10 @@ export function ProceduresWorkspace({
               {isPending ? "Guardando..." : "Agregar"}
             </button>
           </div>
+          <div className="mt-3 rounded-2xl bg-[var(--color-panel-soft)] px-4 py-3 text-sm text-[var(--color-muted)]">
+            {getProcedureTemplate(draft.type).summary}
+          </div>
+          </>
         ) : null}
 
         {showForm ? (
@@ -309,18 +371,25 @@ export function ProceduresWorkspace({
       <section className="rounded-[28px] border border-[var(--color-line)] bg-white">
         <div className="grid gap-3 p-4 sm:hidden">
           {filtered.map((procedure) => (
-            <a
+            <article
               key={procedure.id}
-              href={`/tramites/${procedure.id}`}
-              className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 py-4 transition hover:border-[var(--color-accent)]/40 hover:bg-white"
+              className={`rounded-2xl border px-4 py-4 transition ${
+                procedure.archived
+                  ? "border-[var(--color-line)] bg-[var(--color-panel-soft)] opacity-80"
+                  : "border-[var(--color-line)] bg-[var(--color-panel-soft)] hover:border-[var(--color-accent)]/40 hover:bg-white"
+              }`}
             >
               <div className="flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-[var(--color-ink)]">{procedure.type}</p>
+                    <a href={`/tramites/${procedure.id}`} className="text-sm font-semibold text-[var(--color-ink)]">
+                      {procedure.type}
+                    </a>
                     <p className="mt-1 text-sm text-[var(--color-muted)]">{procedure.client}</p>
                   </div>
-                  <StatusBadge tone={procedure.statusTone}>{procedure.status}</StatusBadge>
+                  <StatusBadge tone={procedure.archived ? "neutral" : procedure.statusTone}>
+                    {procedure.archived ? "Archivado" : procedure.status}
+                  </StatusBadge>
                 </div>
                 <div className="grid gap-2 text-sm text-[var(--color-muted)]">
                   <p>Vehiculo: {procedure.vehicle}</p>
@@ -328,15 +397,26 @@ export function ProceduresWorkspace({
                   <p>Jurisdiccion: {procedure.jurisdiction}</p>
                   <p>Objetivo: {procedure.targetDate}</p>
                 </div>
+                {canEdit ? (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => toggleArchived(procedure)}
+                      disabled={isPending}
+                      className="rounded-2xl border border-[var(--color-line)] px-3 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-45"
+                    >
+                      {procedure.archived ? "Reactivar" : "Archivar"}
+                    </button>
+                  </div>
+                ) : null}
               </div>
-            </a>
+            </article>
           ))}
         </div>
         <div className="hidden overflow-x-auto sm:block">
         <table className="min-w-[760px] divide-y divide-[var(--color-line)] text-left">
           <thead className="bg-[var(--color-panel-soft)] text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
             <tr>
-              {["Tramite", "Cliente", "Vehiculo", "Estado", "Prioridad", "Jurisdiccion", "Objetivo"].map((heading) => (
+              {["Tramite", "Cliente", "Vehiculo", "Estado", "Prioridad", "Jurisdiccion", "Objetivo", "Acciones"].map((heading) => (
                 <th key={heading} className="px-5 py-4 font-medium">
                   {heading}
                 </th>
@@ -345,7 +425,7 @@ export function ProceduresWorkspace({
           </thead>
           <tbody className="divide-y divide-[var(--color-line)]">
             {filtered.map((procedure) => (
-              <tr key={procedure.id} className="transition hover:bg-[var(--color-panel-soft)]">
+              <tr key={procedure.id} className={`transition ${procedure.archived ? "bg-[var(--color-panel-soft)] opacity-80" : "hover:bg-[var(--color-panel-soft)]"}`}>
                 <td className="px-5 py-4">
                   <a href={`/tramites/${procedure.id}`} className="text-sm font-semibold text-[var(--color-ink)]">
                     {procedure.type}
@@ -354,11 +434,24 @@ export function ProceduresWorkspace({
                 <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{procedure.client}</td>
                 <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{procedure.vehicle}</td>
                 <td className="px-5 py-4">
-                  <StatusBadge tone={procedure.statusTone}>{procedure.status}</StatusBadge>
+                  <StatusBadge tone={procedure.archived ? "neutral" : procedure.statusTone}>
+                    {procedure.archived ? "Archivado" : procedure.status}
+                  </StatusBadge>
                 </td>
                 <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{procedure.priority}</td>
                 <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{procedure.jurisdiction}</td>
                 <td className="px-5 py-4 font-mono text-sm text-[var(--color-ink)]">{procedure.targetDate}</td>
+                <td className="px-5 py-4">
+                  {canEdit ? (
+                    <button
+                      onClick={() => toggleArchived(procedure)}
+                      disabled={isPending}
+                      className="rounded-2xl border border-[var(--color-line)] px-3 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-45"
+                    >
+                      {procedure.archived ? "Reactivar" : "Archivar"}
+                    </button>
+                  ) : null}
+                </td>
               </tr>
             ))}
           </tbody>

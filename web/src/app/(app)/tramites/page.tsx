@@ -10,7 +10,7 @@ export default async function ProceduresPage({
   const { profile } = await requireAuthenticatedAppUser();
   const params = (await searchParams) ?? {};
   const [procedures, contacts, vehicles] = await Promise.all([
-    getProceduresData(),
+    getProceduresData({ includeArchived: true }),
     getContactsData(),
     getVehiclesData(),
   ]);

@@ -4,12 +4,18 @@ import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { movements as mockMovements } from "@/data/mock-data";
-import { createFinancialMovementAction, updateFinancialMovementAction } from "@/app/(app)/actions";
+import {
+  createFinancialMovementAction,
+  toggleFinancialMovementArchivedAction,
+  updateFinancialMovementAction,
+} from "@/app/(app)/actions";
 import { confirmDiscardChanges, useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 
-type MovementItem = (typeof mockMovements)[number];
+type MovementItem = (typeof mockMovements)[number] & {
+  archived?: boolean;
+};
 
-const filters = ["Todos", "Ingresos", "Egresos", "Gestoria", "Agencia", "General", "Personal"] as const;
+const filters = ["Todos", "Ingresos", "Egresos", "Gestoria", "Agencia", "General", "Personal", "Archivados"] as const;
 const categoryOptions = [
   "Otros ingresos",
   "Honorarios de tramites",
@@ -80,6 +86,15 @@ export function FinanceWorkspace({
       priority: string;
       targetDate: string;
     }[];
+    monthlyReport: {
+      monthLabel: string;
+      totalIncome: number;
+      totalExpense: number;
+      net: number;
+      byArea: { area: string; balance: number }[];
+      activeProcedures: number;
+      openOperations: number;
+    };
   };
   canEdit: boolean;
 }) {
@@ -117,9 +132,12 @@ export function FinanceWorkspace({
             .includes(search.toLowerCase());
         const movementType = movement.amount.startsWith("+") ? "Ingresos" : "Egresos";
         const matchesFilter =
-          activeFilter === "Todos" ||
-          activeFilter === movementType ||
-          activeFilter === movement.area;
+          activeFilter === "Todos"
+            ? !movement.archived
+            : activeFilter === "Archivados"
+              ? Boolean(movement.archived)
+              : !movement.archived &&
+                (activeFilter === movementType || activeFilter === movement.area);
         return matchesSearch && matchesFilter;
       }),
     [activeFilter, items, search],
@@ -235,6 +253,46 @@ export function FinanceWorkspace({
     setEditingInitial("");
     setError("");
     setSuccess("");
+  }
+
+  function startEditing(movement: MovementItem) {
+    setEditingId(movement.id);
+    const nextDraft = {
+      description: movement.description,
+      category: movement.category,
+      area: movement.area,
+      account: movement.account,
+      amount: movement.amount,
+    };
+    setEditingDraft(nextDraft);
+    setEditingInitial(JSON.stringify(nextDraft));
+    setError("");
+    setSuccess("");
+  }
+
+  function toggleArchived(movement: MovementItem) {
+    if (!canEdit) return;
+
+    setError("");
+    setSuccess("");
+    startTransition(async () => {
+      const result = await toggleFinancialMovementArchivedAction({
+        id: movement.id,
+        archived: Boolean(movement.archived),
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setItems((current) =>
+        current.map((item) =>
+          item.id === movement.id ? { ...item, archived: result.item.archived } : item,
+        ),
+      );
+      setEditingId(null);
+      setSuccess(movement.archived ? "Movimiento reactivado." : "Movimiento archivado.");
+    });
   }
 
   return (
@@ -374,7 +432,7 @@ export function FinanceWorkspace({
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Movimientos</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{filtered.length}</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{items.filter((item) => !item.archived).length}</p>
           </div>
           <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Balance filtro</p>
@@ -383,8 +441,8 @@ export function FinanceWorkspace({
             </p>
           </div>
           <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Area activa</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{activeFilter}</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Archivados</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{items.filter((item) => item.archived).length}</p>
           </div>
         </div>
       </section>
@@ -580,13 +638,102 @@ export function FinanceWorkspace({
         ))}
       </section>
 
+      <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Reporte mensual</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+            Lectura liviana de {insights.monthlyReport.monthLabel} para decidir sin abrir una planilla.
+          </h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Ingresos</p>
+              <p className="mt-2 text-lg font-semibold text-[var(--color-success)]">
+                + ${insights.monthlyReport.totalIncome.toLocaleString("es-AR")}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Egresos</p>
+              <p className="mt-2 text-lg font-semibold text-[var(--color-danger)]">
+                - ${insights.monthlyReport.totalExpense.toLocaleString("es-AR")}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Neto</p>
+              <p className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
+                {insights.monthlyReport.net >= 0 ? "+" : "-"} ${Math.abs(insights.monthlyReport.net).toLocaleString("es-AR")}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          {insights.monthlyReport.byArea.map((item) => (
+            <div key={item.area} className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5">
+              <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">{item.area}</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+                {item.balance >= 0 ? "Esta area deja saldo positivo este mes." : "Esta area viene consumiendo caja este mes."}
+              </p>
+              <p className="mt-3 text-lg font-semibold tracking-tight text-[var(--color-ink)]">
+                {item.balance >= 0 ? "+" : "-"} ${Math.abs(item.balance).toLocaleString("es-AR")}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Reporte de negocio</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+            La caja sirve cuando separa bien gestoria, agencia, general y personal.
+          </h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {filteredAreaBalances.map((item) => (
+              <div key={item.area} className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">{item.area}</p>
+                <p className="mt-2 text-lg font-semibold tracking-tight text-[var(--color-ink)]">
+                  {item.balance >= 0 ? "+" : "-"} ${Math.abs(item.balance).toLocaleString("es-AR")}
+                </p>
+                <p className="mt-2 text-sm text-[var(--color-muted)]">
+                  {item.balance >= 0
+                    ? "Esta area hoy aporta caja neta."
+                    : "Esta area hoy consume mas caja de la que devuelve."}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          {[
+            {
+              title: "Cobro pendiente",
+              detail: `${insights.proceduresWithoutIncome} tramites activos todavia sin ingreso cargado.`,
+            },
+            {
+              title: "Margen de agencia",
+              detail: `$${insights.openOperationsMargin.toLocaleString("es-AR")} abiertos en operaciones no cerradas.`,
+            },
+            {
+              title: "Presion documental",
+              detail: `${insights.proceduresPendingDocs} carpetas pendientes y ${insights.observedProcedures} observadas retrasan cobro.`,
+            },
+          ].map((item) => (
+            <div key={item.title} className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5">
+              <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">{item.title}</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">{item.detail}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="rounded-[28px] border border-[var(--color-line)] bg-white">
         <div className="grid gap-3 p-4 sm:hidden">
           {filtered.map((movement) => {
             const isEditing = editingId === movement.id;
 
             return (
-              <article key={movement.id} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 py-4">
+              <article key={movement.id} className={`rounded-2xl border px-4 py-4 ${movement.archived ? "border-[var(--color-line)] bg-[var(--color-panel-soft)] opacity-80" : "border-[var(--color-line)] bg-[var(--color-panel-soft)]"}`}>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-muted)]">{movement.date}</p>
                 {isEditing ? (
                   <div className="mt-3 space-y-3">
@@ -616,22 +763,15 @@ export function FinanceWorkspace({
                     <div className="mt-3 grid gap-2 text-sm text-[var(--color-muted)]">
                       <p>Area: {movement.area}</p>
                       <p>Cuenta: {movement.account}</p>
+                      {movement.archived ? <p>Estado: Archivado</p> : null}
                     </div>
                     {canEdit ? (
-                      <div className="mt-4">
-                        <button onClick={() => {
-                          setEditingId(movement.id);
-                          const nextDraft = {
-                            description: movement.description,
-                            category: movement.category,
-                            area: movement.area,
-                            account: movement.account,
-                            amount: movement.amount,
-                          };
-                          setEditingDraft(nextDraft);
-                          setEditingInitial(JSON.stringify(nextDraft));
-                        }} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
+                      <div className="mt-4 flex gap-2">
+                        <button onClick={() => startEditing(movement)} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
                           Editar
+                        </button>
+                        <button onClick={() => toggleArchived(movement)} disabled={isPending} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-45">
+                          {movement.archived ? "Reactivar" : "Archivar"}
                         </button>
                       </div>
                     ) : null}
@@ -655,7 +795,7 @@ export function FinanceWorkspace({
               const isEditing = editingId === movement.id;
 
               return (
-                <tr key={movement.id} className="transition hover:bg-[var(--color-panel-soft)]">
+                <tr key={movement.id} className={`transition ${movement.archived ? "bg-[var(--color-panel-soft)] opacity-80" : "hover:bg-[var(--color-panel-soft)]"}`}>
                   <td className="px-5 py-4 font-mono text-sm text-[var(--color-muted)]">{movement.date}</td>
                   {isEditing ? (
                     <>
@@ -676,24 +816,18 @@ export function FinanceWorkspace({
                       <td className="px-5 py-4 text-sm font-semibold text-[var(--color-ink)]">{movement.description}</td>
                       <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{movement.category}</td>
                       <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{movement.area}</td>
-                      <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{movement.account}</td>
+                      <td className="px-5 py-4 text-sm text-[var(--color-muted)]">{movement.archived ? `${movement.account} · Archivado` : movement.account}</td>
                       <td className={`px-5 py-4 text-sm font-semibold ${movement.amount.startsWith("+") ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"}`}>{movement.amount}</td>
                       <td className="px-5 py-4">
                         {canEdit ? (
-                          <button onClick={() => {
-                            setEditingId(movement.id);
-                            const nextDraft = {
-                              description: movement.description,
-                              category: movement.category,
-                              area: movement.area,
-                              account: movement.account,
-                              amount: movement.amount,
-                            };
-                            setEditingDraft(nextDraft);
-                            setEditingInitial(JSON.stringify(nextDraft));
-                          }} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
-                            Editar
-                          </button>
+                          <div className="flex gap-2">
+                            <button onClick={() => startEditing(movement)} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
+                              Editar
+                            </button>
+                            <button onClick={() => toggleArchived(movement)} disabled={isPending} className="rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-45">
+                              {movement.archived ? "Reactivar" : "Archivar"}
+                            </button>
+                          </div>
                         ) : null}
                       </td>
                     </>

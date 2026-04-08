@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Guia simple para probar la app</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f3efe6;
+        --paper: #fffdf9;
+        --ink: #182228;
+        --muted: #5f6f76;
+        --line: #d8d1c3;
+        --accent: #1f4f5f;
+        --accent-soft: #e4eef1;
+        --warn: #f6e6df;
+        --ok: #e6f2eb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: var(--bg);
+      }
+
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, #efe8dc 0%, #f6f2ea 100%);
+        color: var(--ink);
+        font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.45;
+      }
+
+      .page {
+        width: min(980px, calc(100vw - 32px));
+        margin: 24px auto;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        box-shadow: 0 24px 70px rgba(24, 34, 40, 0.08);
+        overflow: hidden;
+      }
+
+      .hero {
+        padding: 36px 40px 28px;
+        background: linear-gradient(135deg, #17343f 0%, #214d5b 56%, #2a6273 100%);
+        color: #ffffff;
+      }
+
+      .eyebrow {
+        margin: 0;
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      h1 {
+        margin: 14px 0 0;
+        font-size: 40px;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+        font-weight: 600;
+      }
+
+      .hero p {
+        max-width: 760px;
+        margin: 16px 0 0;
+        font-size: 20px;
+        line-height: 1.55;
+        color: rgba(255, 255, 255, 0.86);
+      }
+
+      .content {
+        padding: 28px 28px 36px;
+      }
+
+      .section {
+        margin-top: 18px;
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: #ffffff;
+      }
+
+      .section h2 {
+        margin: 0 0 16px;
+        font-size: 28px;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+        font-weight: 600;
+      }
+
+      .section p,
+      .section li {
+        font-size: 21px;
+        color: var(--ink);
+      }
+
+      .section ul,
+      .section ol {
+        margin: 0;
+        padding-left: 28px;
+      }
+
+      .section li + li {
+        margin-top: 10px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .card {
+        padding: 18px;
+        border-radius: 20px;
+        border: 1px solid var(--line);
+        background: #fff;
+      }
+
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 22px;
+        line-height: 1.2;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+
+      .card p,
+      .card li {
+        margin: 0;
+        font-size: 19px;
+        color: var(--muted);
+      }
+
+      .card ul {
+        margin-top: 10px;
+        padding-left: 22px;
+      }
+
+      .note {
+        background: var(--accent-soft);
+      }
+
+      .warn {
+        background: var(--warn);
+      }
+
+      .ok {
+        background: var(--ok);
+      }
+
+      .footer {
+        padding: 0 28px 34px;
+      }
+
+      .footer-box {
+        padding: 22px 24px;
+        border-radius: 24px;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, #fbf8f1 0%, #f3eee3 100%);
+      }
+
+      .footer-box h2 {
+        margin: 0 0 10px;
+        font-size: 26px;
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+        font-weight: 600;
+      }
+
+      .footer-box p,
+      .footer-box li {
+        font-size: 20px;
+      }
+
+      code {
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(31, 79, 95, 0.08);
+        color: var(--accent);
+        font-size: 0.92em;
+      }
+
+      @page {
+        size: A4;
+        margin: 14mm;
+      }
+
+      @media (max-width: 780px) {
+        .page {
+          width: calc(100vw - 18px);
+          margin: 9px auto;
+          border-radius: 20px;
+        }
+
+        .hero {
+          padding: 28px 22px 22px;
+        }
+
+        h1 {
+          font-size: 30px;
+        }
+
+        .hero p,
+        .section p,
+        .section li,
+        .footer-box p,
+        .footer-box li {
+          font-size: 18px;
+        }
+
+        .content,
+        .footer {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+
+        .section {
+          padding: 18px;
+          border-radius: 20px;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media print {
+        body {
+          background: #ffffff;
+        }
+
+        .page {
+          width: 100%;
+          margin: 0;
+          border: none;
+          box-shadow: none;
+          border-radius: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">Guia Simple</p>
+        <h1>Como entrar, mirar y probar la app sin complicarse</h1>
+        <p>
+          Esta guia esta pensada para una primera prueba tranquila. La idea no es
+          aprender todo de una, sino entrar, ubicar las partes principales y hacer
+          una prueba simple sin miedo.
+        </p>
+      </section>
+
+      <section class="content">
+        <section class="section">
+          <h2>1. Para entrar</h2>
+          <ol>
+            <li>Abrir la pagina de la app.</li>
+            <li>Tocar o hacer click en <code>Continuar con Google</code>.</li>
+            <li>Entrar con el Gmail habilitado.</li>
+            <li>Esperar a que abra el <code>Dashboard</code>.</li>
+          </ol>
+          <p>
+            Si vuelve a la pantalla de login, probar una vez mas. Si sigue igual,
+            avisar que no dejo entrar.
+          </p>
+        </section>
+
+        <section class="section">
+          <h2>2. Que mirar primero</h2>
+          <ol>
+            <li><code>Dashboard</code>: para ver rapido como esta el dia.</li>
+            <li><code>Tramites</code>: para ver las carpetas de trabajo.</li>
+            <li><code>Finanzas</code>: para ver cobros, gastos y caja.</li>
+            <li><code>Ayudas</code>: para recordar requisitos y pasos.</li>
+          </ol>
+        </section>
+
+        <section class="section">
+          <h2>3. Para que sirve cada parte</h2>
+          <div class="grid">
+            <article class="card">
+              <h3>Dashboard</h3>
+              <ul>
+                <li>tramites urgentes</li>
+                <li>documentos pendientes</li>
+                <li>tareas</li>
+                <li>caja operativa</li>
+                <li>operaciones abiertas</li>
+              </ul>
+            </article>
+
+            <article class="card">
+              <h3>Tramites</h3>
+              <ul>
+                <li>ver cliente y vehiculo</li>
+                <li>ver y cambiar estado</li>
+                <li>marcar requisitos</li>
+                <li>agregar notas</li>
+                <li>cargar movimientos</li>
+                <li>abrir la ayuda del tramite</li>
+              </ul>
+            </article>
+
+            <article class="card">
+              <h3>Contactos</h3>
+              <p>Sirve para guardar clientes, terceros, registros y proveedores.</p>
+            </article>
+
+            <article class="card">
+              <h3>Vehiculos</h3>
+              <p>Sirve para guardar autos o motos vinculados a tramites u operaciones.</p>
+            </article>
+
+            <article class="card">
+              <h3>Tareas</h3>
+              <p>Sirve para anotar pendientes del dia o de la semana.</p>
+            </article>
+
+            <article class="card">
+              <h3>Ayudas</h3>
+              <ul>
+                <li>que documentos pedir</li>
+                <li>que pasos revisar</li>
+                <li>que errores evitar</li>
+                <li>links utiles</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>4. Finanzas, explicado simple</h2>
+          <div class="grid">
+            <article class="card note">
+              <h3>Para cargar</h3>
+              <ul>
+                <li>cobros</li>
+                <li>gastos</li>
+                <li>movimientos de caja</li>
+              </ul>
+            </article>
+
+            <article class="card note">
+              <h3>Para mirar</h3>
+              <ul>
+                <li>cuanto entro</li>
+                <li>cuanto salio</li>
+                <li>cuanto queda</li>
+                <li>en que area se mueve la plata</li>
+                <li>que tramites siguen sin ingreso cargado</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>5. Como probarla sin miedo</h2>
+          <ol>
+            <li>Entrar al <code>Dashboard</code>.</li>
+            <li>Abrir <code>Tramites</code>.</li>
+            <li>Elegir un tramite ya cargado.</li>
+            <li>Marcar un requisito como recibido.</li>
+            <li>Agregar una nota corta.</li>
+            <li>Cambiar el estado.</li>
+            <li>Ir a <code>Finanzas</code>.</li>
+            <li>Cargar un cobro o un gasto chico de prueba.</li>
+            <li>Volver al dashboard y ver si cambian los numeros.</li>
+          </ol>
+        </section>
+
+        <section class="section">
+          <h2>6. Que conviene cargar de verdad</h2>
+          <div class="grid">
+            <article class="card ok">
+              <h3>Ya conviene usarla para</h3>
+              <ul>
+                <li>clientes</li>
+                <li>tramites</li>
+                <li>tareas</li>
+                <li>vehiculos</li>
+                <li>cobros y gastos</li>
+                <li>notas internas</li>
+              </ul>
+            </article>
+
+            <article class="card warn">
+              <h3>No conviene esperar todavia</h3>
+              <ul>
+                <li>contabilidad final cerrada</li>
+                <li>archivo documental completo</li>
+                <li>reporte contable profesional</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <section class="footer">
+        <div class="footer-box">
+          <h2>7. Si se pierde</h2>
+          <p>Siempre puede volver al <code>Dashboard</code>.</p>
+          <p>Desde ahi puede mirar de nuevo:</p>
+          <ul>
+            <li>que esta urgente</li>
+            <li>que esta observado</li>
+            <li>que falta cobrar</li>
+            <li>que tarea sigue pendiente</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

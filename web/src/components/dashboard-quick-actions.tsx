@@ -8,6 +8,7 @@ import {
   createProcedureAction,
   createTaskAction,
 } from "@/app/(app)/actions";
+import { getProcedureTemplate, listProcedureTemplates } from "@/lib/procedure-templates";
 
 const quickActions = [
   { id: "tramite", label: "Nuevo tramite" },
@@ -15,6 +16,7 @@ const quickActions = [
   { id: "contacto", label: "Agregar cliente" },
   { id: "movimiento", label: "Cargar movimiento" },
 ] as const;
+const procedureTemplates = listProcedureTemplates();
 
 export function DashboardQuickActions({ canEdit }: { canEdit: boolean }) {
   const router = useRouter();
@@ -79,6 +81,16 @@ export function DashboardQuickActions({ canEdit }: { canEdit: boolean }) {
       });
       handleSuccess("Tramite creado.");
     });
+  }
+
+  function applyProcedureTemplate(type: string) {
+    const template = getProcedureTemplate(type);
+    setProcedureDraft((current) => ({
+      ...current,
+      type: template.type,
+      jurisdiction: template.defaultJurisdiction,
+      priority: template.defaultPriority,
+    }));
   }
 
   function submitTask() {
@@ -165,11 +177,27 @@ export function DashboardQuickActions({ canEdit }: { canEdit: boolean }) {
 
       {activeAction === "tramite" ? (
         <div className="grid gap-3">
+          <div className="flex flex-wrap gap-2">
+            {procedureTemplates.map((template) => (
+              <button
+                key={template.type}
+                type="button"
+                onClick={() => applyProcedureTemplate(template.type)}
+                className={`rounded-full border px-3 py-2 text-xs uppercase tracking-[0.14em] transition ${
+                  procedureDraft.type === template.type
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
+                    : "border-[var(--color-line)] text-[var(--color-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                }`}
+                disabled={!canEdit || isPending}
+              >
+                {template.type}
+              </button>
+            ))}
+          </div>
           <select value={procedureDraft.type} onChange={(event) => setProcedureDraft((current) => ({ ...current, type: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" disabled={!canEdit || isPending}>
-            <option>Transferencia</option>
-            <option>Patentamiento</option>
-            <option>Duplicado de cedula</option>
-            <option>Denuncia de venta</option>
+            {procedureTemplates.map((template) => (
+              <option key={template.type}>{template.type}</option>
+            ))}
           </select>
           <input value={procedureDraft.client} onChange={(event) => setProcedureDraft((current) => ({ ...current, client: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Cliente" disabled={!canEdit || isPending} />
           <input value={procedureDraft.vehicle} onChange={(event) => setProcedureDraft((current) => ({ ...current, vehicle: event.target.value }))} className="h-11 rounded-2xl border border-[var(--color-line)] px-4 text-sm outline-none focus:border-[var(--color-accent)]" placeholder="Vehiculo" disabled={!canEdit || isPending} />

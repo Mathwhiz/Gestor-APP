@@ -9,7 +9,7 @@ import { getDashboardData } from "@/lib/data";
 export default async function DashboardPage() {
   const { profile } = await requireAuthenticatedAppUser();
   const dashboardData = await getDashboardData();
-  const { tasks, procedures, summaries, movements, guides, operations, quickStats } =
+  const { tasks, procedures, summaries, movements, guides, operations, quickStats, areaReport, operationalAlerts, dailyFocus, monthlyOverview } =
     dashboardData;
 
   type DashboardData = typeof dashboardData;
@@ -70,6 +70,90 @@ export default async function DashboardPage() {
         {summaries.map((summary: SummaryItem) => (
           <SummaryCard key={summary.title} {...summary} />
         ))}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+        <SectionCard title="Alertas operativas" description="Lo que puede romper ritmo, cobro o cierre.">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {operationalAlerts.map((alert) => (
+              <div key={alert.title} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-[var(--color-ink)]">{alert.title}</p>
+                  <StatusBadge tone={alert.tone}>{String(alert.value ?? "")}</StatusBadge>
+                </div>
+                <p className="mt-2 text-sm text-[var(--color-muted)]">{alert.detail}</p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Caja por negocio" description="Separacion rapida entre gestoria, agencia y gastos generales.">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {areaReport.map((item) => (
+              <div key={item.area} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">{item.area}</p>
+                <p className="mt-2 text-lg font-semibold tracking-tight text-[var(--color-ink)]">
+                  {item.balance >= 0 ? "+" : "-"} $ {Math.abs(item.balance).toLocaleString("es-AR")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <SectionCard title="Prioridad de hoy" description="Lo siguiente que conviene mover para no perder ritmo.">
+          <div className="space-y-3">
+            {dailyFocus.map((item) => (
+              <a
+                key={`${item.kind}-${item.id}`}
+                href={item.href}
+                className="flex flex-col gap-3 rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 py-4 transition hover:border-[var(--color-accent)] hover:bg-white"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--color-ink)]">{item.title}</p>
+                    <p className="mt-1 text-sm text-[var(--color-muted)]">{item.meta}</p>
+                  </div>
+                  <StatusBadge tone={item.tone}>{item.kind}</StatusBadge>
+                </div>
+              </a>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Reporte mensual" description="Lectura liviana del mes actual, sin convertirlo en sistema contable pesado.">
+          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+            <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">{monthlyOverview.monthLabel}</p>
+              <p className="mt-2 text-lg font-semibold tracking-tight text-[var(--color-ink)]">
+                {monthlyOverview.net >= 0 ? "+" : "-"} $ {Math.abs(monthlyOverview.net).toLocaleString("es-AR")}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Ingresos</p>
+              <p className="mt-2 text-lg font-semibold tracking-tight text-[var(--color-success)]">
+                + $ {monthlyOverview.totalIncome.toLocaleString("es-AR")}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Egresos</p>
+              <p className="mt-2 text-lg font-semibold tracking-tight text-[var(--color-danger)]">
+                - $ {monthlyOverview.totalExpense.toLocaleString("es-AR")}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {monthlyOverview.byArea.map((item) => (
+              <div key={item.area} className="rounded-2xl border border-[var(--color-line)] px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">{item.area}</p>
+                <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
+                  {item.balance >= 0 ? "+" : "-"} $ {Math.abs(item.balance).toLocaleString("es-AR")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
       </section>
 
       <section className="grid gap-4 sm:gap-6 xl:grid-cols-[1.4fr_1fr]">

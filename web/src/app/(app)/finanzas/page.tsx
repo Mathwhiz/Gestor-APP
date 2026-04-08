@@ -5,7 +5,7 @@ import { getFinanceInsightsData, getFinancialMovementsData } from "@/lib/data";
 export default async function FinancePage() {
   const { profile } = await requireAuthenticatedAppUser();
   const [movements, insights] = await Promise.all([
-    getFinancialMovementsData(),
+    getFinancialMovementsData({ includeArchived: true }),
     getFinanceInsightsData(),
   ]);
   return (

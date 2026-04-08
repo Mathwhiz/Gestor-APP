@@ -192,6 +192,7 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
               "Verificacion hecha",
               `${completedRequirements}/${requirements.length} requisitos`,
               initialPriority,
+              detail.templateName ?? "Plantilla base",
             ].map((pill) => (
               <span
                 key={pill}
@@ -257,14 +258,20 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
             </div>
           </div>
           <div className="mt-4 space-y-2">
-            {pendingRequirements.length > 0 ? (
-              pendingRequirements.slice(0, 2).map((item) => (
+            {(detail.alerts?.length ?? 0) > 0 ? (
+              detail.alerts?.map((item) => (
                 <div
-                  key={item.label}
-                  className="rounded-2xl border border-[rgba(173,95,71,0.22)] bg-[var(--color-danger-soft)] px-4 py-3"
+                  key={item.title}
+                  className={`rounded-2xl border px-4 py-3 ${
+                    item.tone === "danger"
+                      ? "border-[rgba(173,95,71,0.22)] bg-[var(--color-danger-soft)]"
+                      : item.tone === "warning"
+                        ? "border-[rgba(181,118,40,0.22)] bg-[rgba(245,234,212,0.65)]"
+                        : "border-[rgba(31,79,95,0.16)] bg-[rgba(228,238,241,0.8)]"
+                  }`}
                 >
-                  <p className="text-sm font-semibold text-[var(--color-ink)]">{item.label}</p>
-                  <p className="mt-1 text-sm text-[var(--color-muted)]">{item.note}</p>
+                  <p className="text-sm font-semibold text-[var(--color-ink)]">{item.title}</p>
+                  <p className="mt-1 text-sm text-[var(--color-muted)]">{item.detail}</p>
                 </div>
               ))
             ) : (
@@ -330,6 +337,9 @@ export function ProcedureDetailWorkspace({ detail, canEdit }: WorkspaceProps) {
         <div className="space-y-6">
           <SectionCard title="Checklist documental" description="Estado real del expediente.">
             <div id="checklist" />
+            <div className="mb-4 rounded-2xl bg-[var(--color-panel-soft)] px-4 py-3 text-sm text-[var(--color-muted)]">
+              Plantilla aplicada: <span className="font-semibold text-[var(--color-ink)]">{detail.templateName ?? "Base"}</span>.
+            </div>
             <div className="mb-4 flex flex-wrap gap-2">
               {statusOptions.map((option) => (
                 <button

@@ -1,5 +1,43 @@
 # Plan Funcional y Tecnico - App Web para Gestoria y Agencia de Autos
 
+## Estado Actual - Abril 2026
+
+Ya quedaron implementados estos puntos en la app:
+
+- archivado y reactivacion de contactos, tareas, guias, vehiculos, tramites, operaciones y movimientos
+- filtros para separar activos de archivados en los modulos principales
+- alertas operativas para vencimientos, observaciones, documentacion pendiente y tramites sin cobro
+- plantillas de tramites para transferencia, patentamiento, duplicado de cedula y denuncia de venta
+- reportes de caja por area de negocio y lectura de margen abierto en operaciones
+- historial unificado en fichas de contacto y vehiculo para ver tramites y operaciones en una sola linea de tiempo
+- descompresion visual de finanzas y operaciones para que se lean mas rapido
+- prioridad diaria en dashboard con foco operativo
+- agenda de tareas por hoy, manana y proximas
+- reporte mensual liviano para caja y seguimiento
+- busqueda global ampliada para tareas y ayudas
+- atajos para vincular mejor operaciones con tramites
+
+## Restriccion Actual de Documentos
+
+El modulo de documentos sigue siendo importante, pero no conviene guardar archivos pesados dentro de una base free de 500 MB.
+
+Decision practica actual:
+
+- la base debe guardar metadatos y referencias
+- los archivos reales conviene resolverlos despues con storage externo u otra estrategia liviana
+- por ahora el foco sigue en orden operativo, caja, alertas e historial
+
+Alternativas a evaluar mas adelante:
+
+- Supabase Storage si se prioriza simplicidad dentro del stack actual
+- Vercel Blob si se prioriza integracion simple con el deploy
+- AWS S3 si se prioriza una solucion mas robusta y escalable
+
+Conclusion actual:
+
+- no implementarlo todavia
+- retomarlo cuando ya este mas consolidado el flujo operativo principal
+
 ## Objetivo
 
 Construir una app web para ayudar a un gestor nacional del automotor matriculado y a su agencia de autos a ordenar:
@@ -65,6 +103,12 @@ Para ordenar todos los movimientos economicos del negocio y tambien distinguir g
 
 Para guardar y vincular archivos y comprobantes a cada tramite, vehiculo, cliente u operacion.
 
+Nota de implementacion actual:
+
+- no se recomienda adjuntar binarios pesados directamente en la base actual por el limite de almacenamiento
+- la etapa correcta seria separar `metadatos en DB` y `archivos en storage`
+- mientras tanto, este modulo queda planteado como siguiente fase y no como prioridad inmediata
+
 ### 7. Tareas y vencimientos
 
 Para gestionar pendientes, recordatorios y fechas criticas.
@@ -125,6 +169,7 @@ Campos principales:
 - comision cobrada
 - comision pagada
 - observaciones
+- archivado: si o no
 
 #### Entidad: Historial de tramite
 
@@ -135,6 +180,13 @@ Campos principales:
 - cambio de estado
 - comentario
 - responsable
+
+Adicional implementado:
+
+- eventos automaticos al crear tramite
+- eventos por cambio de estado
+- eventos por notas operativas
+- eventos por movimientos vinculados
 
 #### Entidad: Documento requerido
 
@@ -165,6 +217,7 @@ Campos principales:
 - titular actual
 - valuacion estimada
 - estado: en stock, vendido, consignado, en tramite, archivado
+- archivado: si o no
 
 ### Agencia / Operaciones
 
@@ -182,6 +235,7 @@ Campos principales:
 - comision
 - margen
 - estado: abierta, reservada, cerrada, anulada
+- archivado: si o no
 
 #### Entidad: Gasto por vehiculo
 
@@ -209,6 +263,7 @@ Campos principales:
 - relacionado con tramite, operacion, vehiculo o contacto
 - comprobante
 - notas
+- archivado: si o no
 
 #### Entidad: Cuenta
 
@@ -258,6 +313,70 @@ Campos principales:
 - prioridad
 - fecha limite
 - estado
+
+Adicional implementado:
+
+- archivo de tareas
+- lectura rapida de agenda inmediata
+- separacion entre pendientes, completadas y archivadas
+
+## Mejoras Implementadas Sobre La Idea Inicial
+
+### Alertas operativas
+
+Ya existe una capa de alertas para detectar:
+
+- tramites observados
+- tramites con documentacion pendiente
+- tramites vencidos o muy cercanos a la fecha objetivo
+- tramites activos sin ingreso cargado
+- operaciones abiertas o reservadas que piden seguimiento
+
+### Flujo diario
+
+Ya existe una capa de lectura rapida para el uso cotidiano:
+
+- prioridad del dia en dashboard
+- agenda inmediata cruzando tareas, tramites y operaciones
+- tareas agrupadas por bloque de vencimiento
+- atajos para crear o vincular entidades sin volver al listado general
+
+### Plantillas de tramite
+
+Ya existe logica para que ciertos tipos de tramite nazcan con estructura base:
+
+- transferencia
+- patentamiento
+- duplicado de cedula
+- denuncia de venta
+
+Cada plantilla define:
+
+- prioridad sugerida
+- jurisdiccion sugerida
+- checklist base
+- resumen operativo
+- ayuda inicial
+
+### Reportes operativos
+
+La app ya muestra reportes mas utiles para el negocio real:
+
+- caja por gestoria
+- caja por agencia
+- caja general
+- caja personal
+- margen abierto de operaciones
+- seguimiento de tramites sin cobro
+- reporte mensual liviano de ingresos, egresos y neto
+
+### Historial unificado
+
+En fichas de contacto y vehiculo ya se puede leer en conjunto:
+
+- tramites relacionados
+- operaciones relacionadas
+- orden cronologico basico para entender el caso completo
 - relacionada con tramite, vehiculo, operacion o contacto
 
 ### Ayudas para tramites

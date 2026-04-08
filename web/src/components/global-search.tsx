@@ -8,7 +8,7 @@ type SearchItem = {
   title: string;
   meta: string;
   href: string;
-  kind: "tramite" | "contacto" | "vehiculo" | "operacion";
+  kind: "tramite" | "contacto" | "vehiculo" | "operacion" | "tarea" | "guia";
 };
 
 const kindLabel: Record<SearchItem["kind"], string> = {
@@ -16,6 +16,8 @@ const kindLabel: Record<SearchItem["kind"], string> = {
   contacto: "Contacto",
   vehiculo: "Vehiculo",
   operacion: "Operacion",
+  tarea: "Tarea",
+  guia: "Guia",
 };
 
 export function GlobalSearch({ items }: { items: SearchItem[] }) {
@@ -51,7 +53,7 @@ export function GlobalSearch({ items }: { items: SearchItem[] }) {
             autoFocus
             className="h-12 w-full rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-soft)] px-4 text-sm outline-none focus:border-[var(--color-accent)]"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar tramites, contactos, vehiculos u operaciones"
+            placeholder="Buscar tramites, contactos, vehiculos, operaciones, tareas o ayudas"
             value={query}
           />
 

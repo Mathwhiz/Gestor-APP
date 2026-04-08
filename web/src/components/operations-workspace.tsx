@@ -5,7 +5,11 @@ import { useMemo, useState, useTransition } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { operations as mockOperations } from "@/data/mock-data";
-import { createOperationAction, updateOperationAction } from "@/app/(app)/actions";
+import {
+  createOperationAction,
+  toggleOperationArchivedAction,
+  updateOperationAction,
+} from "@/app/(app)/actions";
 import { confirmDiscardChanges, useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 
 type OperationItem = {
@@ -22,9 +26,10 @@ type OperationItem = {
   status: string;
   tone: "success" | "warning" | "danger" | "neutral" | "info";
   note: string;
+  archived?: boolean;
 };
 
-const filters = ["Todas", "Abierta", "Reservada", "Cerrada", "Venta", "Compra", "Consignacion"] as const;
+const filters = ["Todas", "Abierta", "Reservada", "Cerrada", "Venta", "Compra", "Consignacion", "Archivadas"] as const;
 
 export function OperationsWorkspace({
   initialItems = mockOperations,
@@ -97,21 +102,32 @@ export function OperationsWorkspace({
             .toLowerCase()
             .includes(search.toLowerCase());
         const matchesFilter =
-          activeFilter === "Todas" ||
-          operation.status === activeFilter ||
-          operation.type === activeFilter;
+          activeFilter === "Todas"
+            ? !operation.archived
+            : activeFilter === "Archivadas"
+              ? Boolean(operation.archived)
+              : !operation.archived &&
+                (operation.status === activeFilter || operation.type === activeFilter);
         return matchesSearch && matchesFilter;
       }),
     [activeFilter, items, search],
   );
 
   const openMargin = filtered
-    .filter((item: (typeof filtered)[number]) => item.status !== "Cerrada")
+    .filter((item: (typeof filtered)[number]) => item.status !== "Cerrada" && !item.archived)
     .reduce(
       (total: number, item: (typeof filtered)[number]) =>
         total + Number(item.margin.replace(/[^\d-]/g, "")),
       0,
     );
+  const activeOperations = items.filter((item) => !item.archived);
+  const operationsNeedingFollowUp = activeOperations.filter(
+    (item) =>
+      item.status === "Reservada" ||
+      item.status === "Abierta" ||
+      item.buyer === "Sin comprador" ||
+      item.seller === "Sin vendedor",
+  );
   const hasDraftChanges = Boolean(
     draft.type !== "Venta" ||
       draft.vehicle.trim() ||
@@ -231,6 +247,31 @@ export function OperationsWorkspace({
     setSuccess("");
   }
 
+  function toggleArchived(operation: OperationItem) {
+    if (!canEdit) return;
+
+    setError("");
+    setSuccess("");
+    startTransition(async () => {
+      const result = await toggleOperationArchivedAction({
+        id: operation.id,
+        archived: Boolean(operation.archived),
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setItems((current) =>
+        current.map((item) =>
+          item.id === operation.id ? { ...item, archived: result.item.archived } : item,
+        ),
+      );
+      setEditingId(null);
+      setSuccess(operation.archived ? "Operacion reactivada." : "Operacion archivada.");
+    });
+  }
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -256,11 +297,15 @@ export function OperationsWorkspace({
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Activas</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{items.filter((item) => item.status !== "Cerrada").length}</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{items.filter((item) => !item.archived && item.status !== "Cerrada").length}</p>
           </div>
           <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Cerradas</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{items.filter((item) => item.status === "Cerrada").length}</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{items.filter((item) => !item.archived && item.status === "Cerrada").length}</p>
+          </div>
+          <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Archivadas</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{items.filter((item) => item.archived).length}</p>
           </div>
           <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Margen abierto</p>
@@ -350,12 +395,60 @@ export function OperationsWorkspace({
         {success ? <p className="mt-3 text-sm text-[var(--color-success)]">{success}</p> : null}
       </section>
 
+      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Seguimiento comercial</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+            Lo importante no es listar todo, sino ver que operacion pide cierre, comprador o documentacion.
+          </h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Con reserva</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{activeOperations.filter((item) => item.status === "Reservada").length}</p>
+            </div>
+            <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Sin comprador</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{activeOperations.filter((item) => item.buyer === "Sin comprador").length}</p>
+            </div>
+            <div className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">Para seguir hoy</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{operationsNeedingFollowUp.length}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          {operationsNeedingFollowUp.slice(0, 3).map((operation) => (
+            <Link
+              key={operation.id}
+              href={`/operaciones/${operation.id}`}
+              className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5 transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">{operation.vehicle}</p>
+                  <p className="mt-2 text-sm text-[var(--color-muted)]">{operation.type} · {operation.status}</p>
+                </div>
+                <StatusBadge tone={operation.tone}>{operation.status}</StatusBadge>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">
+                {operation.buyer === "Sin comprador"
+                  ? "Falta comprador confirmado."
+                  : operation.status === "Reservada"
+                    ? "Conviene seguir senia, documentacion y fecha de cierre."
+                    : "Operacion abierta todavia en seguimiento."}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="grid gap-4 lg:grid-cols-2">
         {filtered.map((operation) => {
           const isEditing = editingId === operation.id;
 
           return (
-            <article key={operation.id} className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
+            <article key={operation.id} className={`rounded-[28px] border px-5 py-5 ${operation.archived ? "border-[var(--color-line)] bg-[var(--color-panel-soft)] opacity-80" : "border-[var(--color-line)] bg-white"}`}>
               {isEditing ? (
                 <div className="space-y-3">
                   {hasEditChanges ? <p className="text-sm text-[var(--color-warning,#b57628)]">Tenes cambios sin guardar en esta edicion.</p> : null}
@@ -421,7 +514,9 @@ export function OperationsWorkspace({
                       <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">{operation.type}</p>
                       <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">{operation.vehicle}</h2>
                     </div>
-                    <StatusBadge tone={operation.tone}>{operation.status}</StatusBadge>
+                    <StatusBadge tone={operation.archived ? "neutral" : operation.tone}>
+                      {operation.archived ? "Archivada" : operation.status}
+                    </StatusBadge>
                   </div>
                   <div className="mt-5 grid gap-3 text-sm text-[var(--color-muted)] sm:grid-cols-2">
                     <p>Comprador: {operation.buyer}</p>
@@ -436,10 +531,21 @@ export function OperationsWorkspace({
                     <Link href={`/operaciones/${operation.id}`} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
                       Abrir ficha
                     </Link>
+                    {!operation.archived ? (
+                      <Link
+                        href={`/tramites?create=1&vehicle=${encodeURIComponent(operation.vehicle)}&client=${encodeURIComponent(operation.buyer !== "Sin comprador" ? operation.buyer : operation.seller !== "Sin vendedor" ? operation.seller : "")}`}
+                        className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                      >
+                        Vincular tramite
+                      </Link>
+                    ) : null}
                   {canEdit ? (
                       <>
                       <button onClick={() => startEditing(operation)} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
                         Editar
+                      </button>
+                      <button onClick={() => toggleArchived(operation)} disabled={isPending} className="rounded-2xl border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-45">
+                        {operation.archived ? "Reactivar" : "Archivar"}
                       </button>
                       </>
                   ) : null}

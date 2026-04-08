@@ -1,5 +1,25 @@
 # Prototipo Hoy - Preparacion de Producto y Tecnica
 
+## Actualizacion - Abril 2026
+
+El prototipo ya dejo de ser solo visual y hoy tiene varias piezas operativas reales:
+
+- persistencia con Prisma y PostgreSQL
+- alta, edicion y archivado en modulos clave
+- dashboard con alertas, caja y seguimiento
+- plantillas de tramites con checklist inicial
+- historial unificado en contactos y vehiculos
+- fichas de tramites con notas, movimientos y timeline
+- finanzas y operaciones mas ordenadas visualmente
+- prioridad diaria y agenda mas clara para trabajar el dia
+- reporte mensual liviano sin convertir la app en sistema contable pesado
+- busqueda global ampliada para ubicar tambien tareas y ayudas
+
+Tambien queda definida una restriccion importante:
+
+- no conviene usar la base free de 500 MB para guardar archivos pesados
+- si mas adelante se suma documentacion real, conviene separar base de datos y storage
+
 ## Objetivo de hoy
 
 Llegar a un prototipo web navegable, consistente y creible de la app para:
@@ -62,6 +82,15 @@ Asi no se frena el avance y no se toma una decision de infraestructura antes de 
 - ayudas
 - tareas
 
+### Modulos ya reforzados en esta etapa
+
+- `dashboard` con alertas operativas y reporte por area
+- `tramites` con plantillas, checklist y archivo
+- `operaciones` con seguimiento comercial y archivo
+- `finanzas` con lectura de caja por area y archivo
+- `contactos` y `vehiculos` con historial unificado
+- `tareas` con agenda ordenada por vencimiento
+
 ### Estructura de carpetas sugerida
 
 - `app/` o `src/app/` para rutas y layout
@@ -116,13 +145,31 @@ Abrir una ficha de tramite y ver:
 - tareas
 - ayuda contextual
 
+Estado actual:
+
+- ya existe checklist activo
+- ya existe historial de eventos
+- ya se pueden cargar notas y movimientos
+- ya se muestran alertas operativas
+- ya se ve la plantilla aplicada al tramite
+
 ### Flujo 4
 
 Ir a finanzas y registrar visualmente el orden economico del dia.
 
+Estado actual:
+
+- ya se pueden cargar, editar y archivar movimientos
+- ya hay lectura por area de negocio
+- ya hay panel de cobros pendientes y presion documental
+
 ### Flujo 5
 
 Ir a ayudas y consultar rapidamente una guia operativa.
+
+Estado actual:
+
+- las ayudas ya se conectan mejor con tramites creados por plantilla
 
 ## 5. Design system base compartido
 
@@ -190,6 +237,17 @@ Estos componentes deberian usarse en todos los modulos:
 - `EmptyState`
 - `QuickActionMenu`
 
+Componentes y patrones que efectivamente quedaron consolidados:
+
+- `PageHeader`
+- `SummaryCard`
+- `SectionCard`
+- `StatusBadge`
+- tarjetas de alerta operativa
+- timeline operativo
+- composer plegable para altas rapidas
+- filtros con separacion entre activos y archivados
+
 ## 7. Reglas de consistencia entre modulos
 
 - todos los listados usan el mismo patron de tabla
@@ -198,6 +256,13 @@ Estos componentes deberian usarse en todos los modulos:
 - las acciones primarias van siempre en el mismo lugar
 - las fichas usan tarjetas o bloques con una grilla consistente
 - la ayuda contextual debe verse igual en cualquier tramite
+
+Reglas agregadas en la implementacion real:
+
+- activos y archivados no se mezclan por defecto
+- las vistas densas deben tener lectura superior con resumen y despues listado
+- las fichas de contacto y vehiculo deben contar la historia, no solo listar items sueltos
+- las alertas tienen que priorizar vencimiento, observacion, documentacion y cobro
 
 ## 8. Catalogos iniciales del prototipo
 
@@ -258,6 +323,65 @@ Estos componentes deberian usarse en todos los modulos:
 - cobrar honorarios atrasados
 
 ### Movimientos demo
+
+- cobro de honorarios
+- pago de formularios
+- combustible o gasto comun
+- alquiler o servicio
+
+## 10. Mejoras ya implementadas respecto del plan inicial
+
+### Borrado logico / archivo
+
+Ya se puede archivar y reactivar:
+
+- contactos
+- tareas
+- guias
+- vehiculos
+- tramites
+- operaciones
+- movimientos
+
+### Descompresion de pantallas
+
+Se mejoro especialmente:
+
+- `finanzas`
+- `operaciones`
+
+Con enfoque en:
+
+- resumen arriba
+- listados abajo
+- menos mezcla de acciones y lectura
+- filtros mas claros
+
+### Reportes y control
+
+El dashboard y finanzas ya muestran:
+
+- caja operativa
+- documentos pendientes
+- tramites observados
+- tramites sin cobro
+- margen abierto
+- caja por area
+- reporte mensual liviano
+
+### Flujo diario reforzado
+
+Quedaron agregados patrones para que la app sirva mejor en el uso cotidiano:
+
+- panel de prioridad del dia
+- agenda inmediata cruzada
+- tareas agrupadas en hoy, manana y proximas
+- busqueda global mas amplia
+- vinculo mas directo entre operacion y tramite
+
+### Historial de relacion
+
+Las fichas de `contactos` y `vehiculos` ya tienen una vista de historial unificado para seguir mejor cada caso.
 
 - cobro de honorarios por transferencia
 - pago de formularios

@@ -95,6 +95,31 @@ export function TasksWorkspace({
     return "info" as const;
   }
 
+  function dueBucket(dueLabel: string) {
+    const normalized = dueLabel
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (normalized.includes("hoy")) return "Hoy";
+    if (normalized.includes("manana")) return "Manana";
+    return "Proximas";
+  }
+
+  const agendaBuckets = [
+    {
+      label: "Hoy",
+      items: items.filter((task) => !task.archived && !task.done && dueBucket(task.dueLabel) === "Hoy"),
+    },
+    {
+      label: "Manana",
+      items: items.filter((task) => !task.archived && !task.done && dueBucket(task.dueLabel) === "Manana"),
+    },
+    {
+      label: "Proximas",
+      items: items.filter((task) => !task.archived && !task.done && dueBucket(task.dueLabel) === "Proximas"),
+    },
+  ];
+
   function toggleDone(id: string) {
     if (!canEdit) return;
 
@@ -271,6 +296,45 @@ export function TasksWorkspace({
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Archivadas</p>
             <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{items.filter((task) => task.archived).length}</p>
           </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[28px] border border-[var(--color-line)] bg-white px-5 py-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Agenda ordenada</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+            Lo ideal es trabajar por bloque de vencimiento y no por lista infinita.
+          </h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {agendaBuckets.map((bucket) => (
+              <div key={bucket.label} className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">{bucket.label}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">{bucket.items.length}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          {agendaBuckets.map((bucket) => (
+            <div key={bucket.label} className="rounded-[24px] border border-[var(--color-line)] bg-white px-5 py-5">
+              <p className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">{bucket.label}</p>
+              <div className="mt-3 space-y-2">
+                {bucket.items.length > 0 ? (
+                  bucket.items.slice(0, 2).map((task) => (
+                    <div key={task.id} className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-3">
+                      <p className="text-sm font-semibold text-[var(--color-ink)]">{task.title}</p>
+                      <p className="mt-1 text-sm text-[var(--color-muted)]">{task.related}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-3 text-sm text-[var(--color-muted)]">
+                    Sin tareas en este bloque.
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

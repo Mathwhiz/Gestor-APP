@@ -35,6 +35,14 @@ type VehicleDetail = {
     margin: string;
     note: string;
   }[];
+  timeline: {
+    id: string;
+    title: string;
+    meta: string;
+    date: string;
+    href: string;
+    tone: "success" | "warning" | "danger" | "neutral" | "info";
+  }[];
 };
 
 export function VehicleDetailWorkspace({ detail }: { detail: VehicleDetail }) {
@@ -98,7 +106,33 @@ export function VehicleDetailWorkspace({ detail }: { detail: VehicleDetail }) {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <SectionCard title="Historial unificado" description="Linea de tiempo de tramites y operaciones alrededor de esta unidad.">
+          <div className="space-y-3">
+            {detail.timeline.length === 0 ? (
+              <p className="rounded-2xl bg-[var(--color-panel-soft)] px-4 py-3 text-sm text-[var(--color-muted)]">
+                No hay historial vinculado todavia.
+              </p>
+            ) : (
+              detail.timeline.map((item) => (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className="block rounded-2xl border border-[var(--color-line)] px-4 py-4 transition hover:border-[var(--color-accent)] hover:bg-[var(--color-panel-soft)]"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--color-ink)]">{item.title}</p>
+                      <p className="mt-1 text-sm text-[var(--color-muted)]">{item.meta}</p>
+                    </div>
+                    <StatusBadge tone={item.tone}>{item.date}</StatusBadge>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </SectionCard>
+
         <SectionCard title="Tramites relacionados" description="Expedientes que usan esta unidad como referencia.">
           <div className="space-y-3">
             {detail.procedures.length === 0 ? (
