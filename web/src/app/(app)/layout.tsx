@@ -8,7 +8,13 @@ export default async function AuthenticatedLayout({
   children: React.ReactNode;
 }>) {
   const { user, profile } = await requireAuthenticatedAppUser();
-  const { searchItems } = await getDashboardData();
+  let searchItems: Awaited<ReturnType<typeof getDashboardData>>["searchItems"] = [];
+  try {
+    const data = await getDashboardData();
+    searchItems = data.searchItems;
+  } catch (err) {
+    console.error("[layout] getDashboardData failed:", err);
+  }
   return (
     <AppShell
       role={profile.role}
